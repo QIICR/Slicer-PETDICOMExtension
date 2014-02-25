@@ -119,5 +119,29 @@
       <channel>output</channel>
       <description><![CDATA[. ]]></description>
     </string>
+    <string>
+      <name>SUVbwConversionFactor</name>
+      <label>SUVbw Conversion Factor</label>
+      <channel>output</channel>
+      <description><![CDATA[. ]]></description>
+    </string>
+    <string>
+      <name>SUVlbmConversionFactor</name>
+      <label>SUVlbm Conversion Factor</label>
+      <channel>output</channel>
+      <description><![CDATA[. ]]></description>
+    </string>
+    <string>
+      <name>SUVbsaConversionFactor</name>
+      <label>SUVbsa Conversion Factor</label>
+      <channel>output</channel>
+      <description><![CDATA[. ]]></description>
+    </string>
+    <string>
+      <name>SUVibwConversionFactor</name>
+      <label>SUVibw Conversion Factor</label>
+      <channel>output</channel>
+      <description><![CDATA[. ]]></description>
+    </string>
   </parameters>
 </executable>

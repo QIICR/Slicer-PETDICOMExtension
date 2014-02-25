@@ -40,6 +40,7 @@
 #undef HAVE_SSTREAM // allegedly stupid DCMTK Header issue; I've not dealt with it personally
 #include "itkDCMTKFileReader.h"
 #include <iostream>
+#include <math.h>
 
 // ...
 // ...............................................................................................
@@ -119,7 +120,22 @@ struct parameters
     std::string radionuclideHalfLife;
     std::string frameReferenceTime;
     std::string returnParameterFile;
-
+    
+    /*std::string correctedImage;
+    std::string decayCorrection; 
+    std::string units;
+    std::string radiopharmInfoSequence;
+    std::string radionuclideHalfLife;
+    std::string radionuclideTotalDose;
+    std::string radiopharmStartTime;
+    std::string seriesDate;
+    std::string seriesTime;
+    std::string acquisitionDate;
+    std::string acquisitionTime;
+    double patientWeight;
+    double patientHeight;
+    std::string weightUnits;
+    std::string heightUnits;*/
 };
 
 // ...
@@ -776,16 +792,16 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
 
   typedef    T                           InputPixelType;
-  typedef itk::Image<InputPixelType,  3> InputImageType;
+  //typedef itk::Image<InputPixelType,  3> InputImageType;
 
-  typedef itk::Image<unsigned char, 3> LabelImageType;
+  //typedef itk::Image<unsigned char, 3> LabelImageType;
 
-  typedef    T                           OutputPixelType;
-  typedef itk::Image<OutputPixelType, 3> OutputImageType;
+  //typedef    T                           OutputPixelType;
+  //typedef itk::Image<OutputPixelType, 3> OutputImageType;
 
-  typedef itk::ImageFileReader<InputImageType>  ReaderType;
-  typedef itk::ImageFileReader<LabelImageType>  LabelReaderType;
-  typedef itk::ImageFileWriter<OutputImageType> WriterType;
+  //typedef itk::ImageFileReader<InputImageType>  ReaderType;
+  //typedef itk::ImageFileReader<LabelImageType>  LabelReaderType;
+  //typedef itk::ImageFileWriter<OutputImageType> WriterType;
 
   // read the DICOM dir to get the radiological data
   typedef short PixelValueType;
@@ -1334,7 +1350,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
   double tissueConversionFactor = ConvertRadioactivityUnits(1, list.radioactivityUnits.c_str(), "kBq");
   dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "MBq");
-  dose = DecayCorrection(list, dose);
+  double decayedDose = DecayCorrection(list, dose);
   weight = ConvertWeightUnits( weight, list.weightUnits.c_str(), "kg");
   // --- check a possible multiply by slope -- take intercept into account?
   /*if( dose == 0.0 )
@@ -1387,6 +1403,36 @@ int LoadImagesAndComputeSUV( parameters & list, T )
     }
   }*/
   
+  // calculate SUVConversionFactors
+  double SUVbwConversionFactor = 0.0;
+  double SUVlbmConversionFactor = 0.0;
+  double SUVbsaConversionFactor = 0.0;
+  double SUVibwConversionFactor = 0.0;
+  if( decayedDose == 0.0 )
+    {
+    // oops, weight by dose is infinity. give error
+    std::cerr << "ComputeSUV: Got 0.0 converted dose!" << std::endl;
+    return EXIT_FAILURE;
+    }
+  else
+    { //All values okay; perform calculation
+      SUVbwConversionFactor = weight * tissueConversionFactor / decayedDose;
+      if(list.patientHeight != 0.0)
+      {
+        SUVbsaConversionFactor = (pow(weight,0.425)*pow(height,0.725)*0.007184)*tissueConversionFactor / decayedDose;
+        if(list.patientSex=="M")
+        {
+          SUVlbmConversionFactor = (1.10*weight - 120*(weight/height)*(weight/height))*tissueConversionFactor / decayedDose;
+          SUVibwConversionFactor = (48.0 + 1.06*(height - 152))*tissueConversionFactor / decayedDose;
+        }
+        if(list.patientSex=="F")
+        {
+          SUVlbmConversionFactor = (1.07*weight - 148*(weight/height)*(weight/height))*tissueConversionFactor / decayedDose;
+          SUVibwConversionFactor = (45.5 + 0.91*(height - 152))*tissueConversionFactor / decayedDose;
+        }
+      }
+    }
+  
   writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
   writeFile << "tissueRadioactivityUnits = " << list.tissueRadioactivityUnits.c_str() << std::endl;
   writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
@@ -1403,6 +1449,10 @@ int LoadImagesAndComputeSUV( parameters & list, T )
   writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
   writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
   writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
+  writeFile << "SUVbwConversionFactor = " << SUVbwConversionFactor << std::endl;
+  writeFile << "SUVlbmConversionFactor = " << SUVlbmConversionFactor << std::endl;
+  writeFile << "SUVbsaConversionFactor = " << SUVbsaConversionFactor << std::endl;
+  writeFile << "SUVibwConversionFactor = " << SUVibwConversionFactor << std::endl;
 
   writeFile.close();
   //reader1->Delete();
