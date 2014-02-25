@@ -19,25 +19,10 @@
       <longflag>--petDICOMPath</longflag>
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
     </directory>
-    <image>
-      <name>PETVolume</name>
-      <label>Input PET Volume</label>
-      <channel>input</channel>
-      <flag>-v</flag>
-      <longflag>--petVolume</longflag>
-      <description><![CDATA[Input PET volume for SUVbw computation (must be the same volume as pointed to by the DICOM path!).]]></description>
-    </image>
   </parameters>
   <parameters>
     <label>Output</label>
-    <description><![CDATA[Select a volume node (existing or new) for the converted PET image.]]></description>
-    <image>
-      <name>SUVVolume</name>
-      <longflag>--suvVolume</longflag>
-      <label>SUV Volume</label>
-      <channel>output</channel>
-      <description><![CDATA[Input PET volume as SUVbw.]]></description>
-    </image>
+    <description><![CDATA[output]]></description>
     <string>
       <name>radioactivityUnits</name>
       <label>Radioactivity Units</label>

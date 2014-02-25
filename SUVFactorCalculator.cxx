@@ -100,8 +100,6 @@ namespace
 struct parameters
   {
     std::string PETDICOMPath;
-    std::string PETVolumeName;
-    std::string SUVVolumeName;
     std::string patientName;
     std::string studyDate;
     std::string radioactivityUnits;
@@ -789,71 +787,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
   typedef itk::ImageFileReader<LabelImageType>  LabelReaderType;
   typedef itk::ImageFileWriter<OutputImageType> WriterType;
 
-  //vtkImageData *                    petVolume;
-  //vtkITKArchetypeImageSeriesReader *reader1 = NULL;
-  // check for the input files
-  FILE * petfile;
-  petfile = fopen(list.PETVolumeName.c_str(), "r");
-  if( petfile == NULL )
-    {
-    std::cerr << "ERROR: cannot open input volume file '" << list.PETVolumeName.c_str() << "'" << endl;
-    return EXIT_FAILURE;
-    }
-  fclose(petfile);
-
-
-  //FILE * suvfile;
-  //suvfile = fopen(list.SUVVolumeName.c_str(), "r");
-  if( list.SUVVolumeName.length() == 0)//suvfile == NULL )
-    {
-    std::cerr << "ERROR: no output volume" << endl;// '" << list.SUVVolumeName.c_str() << "'" << endl;
-    return EXIT_FAILURE;
-    }
-  //else
-  //  std::cout << "Name '" << list.SUVVolumeName.c_str() << "' exists" << endl;
-  //fclose(suvfile);
-
-  // Read the PET file
-  //reader1 = vtkITKArchetypeImageSeriesScalarReader::New();
-//    vtkPluginFilterWatcher watchReader1 ( reader1, "Reading PET Volume", CLPProcessInformation );
-  //reader1->SetArchetype(list.PETVolumeName.c_str() );
-  //reader1->SetOutputScalarTypeToNative();
-  //reader1->SetDesiredCoordinateOrientationToNative();
-  //reader1->SetUseNativeOriginOn();
-  //reader1->Update();
-  //std::cout << "Done reading the file " << list.PETVolumeName.c_str() << endl;
-
-  // Read the SUV file
-
-  /*reader2 = vtkITKArchetypeImageSeriesScalarReader::New();
-//    vtkPluginFilterWatcher watchReader2 ( reader2, "Reading SUV Volume", CLPProcessInformation );
-  reader2->SetArchetype(list.PETVolumeName.c_str() );
-  reader2->SetOutputScalarTypeToNative();
-  reader2->SetDesiredCoordinateOrientationToNative();
-  reader2->SetUseNativeOriginOn();
-  reader2->Update();
-  std::cout << "Done reading the file " << list.SUVVolumeName.c_str() << endl;*/
-
-
-  // stuff the images.
-//  reader1->Update();
-//  reader2->Update();
-  //petVolume = reader1->GetOutput();
-  //petVolume->Update();
-
-  //
-  // COMPUTE SUV ///////////////////////////////////////////////////////////////////////////////RSNA CHANGE//////////////////////////
-  //
-
-  /*if( petVolume == NULL )
-    {
-    std::cerr << "No input PET volume found." << std::endl;
-    return EXIT_FAILURE;
-    }*/
-
-
   // read the DICOM dir to get the radiological data
-
   typedef short PixelValueType;
   typedef itk::Image< PixelValueType, 3 > VolumeType;
   typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
@@ -868,7 +802,6 @@ int LoadImagesAndComputeSUV( parameters & list, T )
     std::cerr << "GetParametersFromDicomHeader:Got empty list.PETDICOMPath." << std::endl;
     return EXIT_FAILURE;
     }
-
 
   //--- catch non-dicom data
   vtkGlobFileNames* gfn = vtkGlobFileNames::New();
@@ -1404,7 +1337,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
   dose = DecayCorrection(list, dose);
   weight = ConvertWeightUnits( weight, list.weightUnits.c_str(), "kg");
   // --- check a possible multiply by slope -- take intercept into account?
-  if( dose == 0.0 )
+  /*if( dose == 0.0 )
     {
     // oops, weight by dose is infinity. give error
     std::cerr << "ComputeSUV: Got 0.0 converted dose!" << std::endl;
@@ -1452,49 +1385,30 @@ int LoadImagesAndComputeSUV( parameters & list, T )
       writer->Update();
       std::cout << "Successfully wrote " << list.SUVVolumeName.c_str() << std::endl;
     }
-  }
+  }*/
   
   writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
-  std::cout << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
   writeFile << "tissueRadioactivityUnits = " << list.tissueRadioactivityUnits.c_str() << std::endl;
-  std::cout << "tissueRadioactivityUnits = " << list.tissueRadioactivityUnits.c_str() << std::endl;
   writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
-  std::cout << "weightUnits = " << list.weightUnits.c_str() << std::endl;
   writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
-  std::cout << "heightUnits = " << list.heightUnits.c_str() << std::endl;
   writeFile << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
-  std::cout << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
   writeFile << "injectedDose = " << list.injectedDose << std::endl;
-  std::cout << "injectedDose = " << list.injectedDose << std::endl;
   writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
-  std::cout << "calibrationFactor = " << list.calibrationFactor << std::endl;
   writeFile << "patientWeight = " << list.patientWeight << std::endl;
-  std::cout << "patientWeight = " << list.patientWeight << std::endl;
   writeFile << "patientHeight = " << list.patientHeight << std::endl;
-  std::cout << "patientHeight = " << list.patientHeight << std::endl;
   writeFile << "patientSex = " << list.patientSex.c_str() << std::endl;
-  std::cout << "patientSex = " << list.patientSex.c_str() << std::endl;
   writeFile << "seriesReferenceTime = " << list.seriesReferenceTime.c_str() << std::endl;
-  std::cout << "seriesReferenceTime = " << list.seriesReferenceTime.c_str() << std::endl;
   writeFile << "injectionTime = " << list.injectionTime.c_str() << std::endl;
-  std::cout << "injectionTime = " << list.injectionTime.c_str() << std::endl;
   writeFile << "decayCorrection = " << list.decayCorrection.c_str() << std::endl;
-  std::cout << "decayCorrection = " << list.decayCorrection.c_str() << std::endl;
   writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
-  std::cout << "decayFactor = " << list.decayFactor.c_str() << std::endl;
   writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
-  std::cout << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
   writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
-  std::cout << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
 
   writeFile.close();
   //reader1->Delete();
   return EXIT_SUCCESS;
 
 }
-
-
-
 
 
 } // end of anonymous namespace
@@ -1541,12 +1455,6 @@ int main( int argc, char * argv[] )
     {
     // pass the input parameters to the helper method
     list.PETDICOMPath = PETDICOMPath;
-    //list.PETDICOMPath = argv[1];
-    // keep the PET volume as the node selector PET volume
-    list.PETVolumeName = PETVolume;
-    //list.PETVolumeName = argv[2];
-    list.SUVVolumeName = SUVVolume;
-    //list.SUVVolumeName = argv[3];
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
