@@ -1319,8 +1319,9 @@ int LoadImagesAndComputeSUV( parameters & list )
                   std::cerr << "ComputeSUV: got zero weight!" << std::endl;
                   return EXIT_FAILURE;
                 }
-              double tissueConversionFactor = ConvertRadioactivityUnits(1, list.radioactivityUnits.c_str(), "kBq");
-              dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "MBq");
+              //double tissueConversionFactor = ConvertRadioactivityUnits(1, list.radioactivityUnits.c_str(), "kBq");
+              //dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "MBq");
+              dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "kBq");  // kBq/mL
               double decayedDose = DecayCorrection(list, dose);
               weight = ConvertWeightUnits( weight, list.weightUnits.c_str(), "kg");
               if( decayedDose == 0.0 )
@@ -1331,19 +1332,38 @@ int LoadImagesAndComputeSUV( parameters & list )
                 }
               else
                 { //All values okay; perform calculation
-                  SUVbwConversionFactor = weight * tissueConversionFactor / decayedDose;
+                  //SUVbwConversionFactor = weight * tissueConversionFactor / decayedDose;
+                  SUVbwConversionFactor = weight / decayedDose;
                   if(height != 0.0)
                     {
-                      SUVbsaConversionFactor = (pow(weight,0.425)*pow(height,0.725)*0.007184)*tissueConversionFactor / decayedDose;
+                      double leanBodyMass;    // kg
+                      double bodySurfaceArea; // m^2
+                      double idealBodyMass;   // kg
+                      
+                      bodySurfaceArea = (pow(weight,0.425)*pow(height,0.725)*0.007184);
+                      //SUVbsaConversionFactor = bodySurfaceArea*tissueConversionFactor / decayedDose;
+                      SUVbsaConversionFactor = bodySurfaceArea / decayedDose;
                       if(list.patientSex=="M")
                         {
-                          SUVlbmConversionFactor = (1.10*weight - 120*(weight/height)*(weight/height))*tissueConversionFactor / decayedDose;
-                          SUVibwConversionFactor = (48.0 + 1.06*(height - 152))*tissueConversionFactor / decayedDose;
+                          leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
+                          //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
+                          SUVlbmConversionFactor = leanBodyMass / decayedDose;
+                          
+                          idealBodyMass = 48.0 + 1.06*(height - 152);
+                          if(idealBodyMass > weight){ idealBodyMass = weight; };
+                          //SUVibwConversionFactor = idealBodyMass*tissueConversionFactor / decayedDose;
+                          SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
                       if(list.patientSex=="F")
                         {
-                          SUVlbmConversionFactor = (1.07*weight - 148*(weight/height)*(weight/height))*tissueConversionFactor / decayedDose;
-                          SUVibwConversionFactor = (45.5 + 0.91*(height - 152))*tissueConversionFactor / decayedDose;
+                          leanBodyMass = 1.07*weight - 148*(weight/height)*(weight/height);
+                          //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
+                          SUVlbmConversionFactor = leanBodyMass / decayedDose;
+                          
+                          idealBodyMass = 45.5 + 0.91*(height - 152);
+                          if(idealBodyMass > weight){ idealBodyMass = weight; };
+                          //SUVibwConversionFactor = idealBodyMass*tissueConversionFactor / decayedDose;
+                          SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
                     }
                 }
@@ -1362,108 +1382,7 @@ int LoadImagesAndComputeSUV( parameters & list )
     {
       std::cout << "No corrected image detected." << std::endl;
     }
-    
-/*  //
-  double weight = list.patientWeight;
-  double height = list.patientHeight*100; //convert to centimeters
-  double dose = list.injectedDose;
-  if( dose == 0.0 )
-    {
-    std::cerr << "ComputeSUV: Got NULL dose!" << std::endl;
-    return EXIT_FAILURE;
-    }
-  if( weight == 0.0 )
-    {
-    std::cerr << "ComputeSUV: got zero weight!" << std::endl;
-    return EXIT_FAILURE;
-    }
 
-
-
-  double tissueConversionFactor = ConvertRadioactivityUnits(1, list.radioactivityUnits.c_str(), "kBq");
-  dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "MBq");
-  double decayedDose = DecayCorrection(list, dose);
-  weight = ConvertWeightUnits( weight, list.weightUnits.c_str(), "kg");*/
-  // --- check a possible multiply by slope -- take intercept into account?
-  /*if( dose == 0.0 )
-    {
-    // oops, weight by dose is infinity. give error
-    std::cerr << "ComputeSUV: Got 0.0 converted dose!" << std::endl;
-    return EXIT_FAILURE;
-    }
-  else
-  { //All values okay; perform calculation
-    double weightByDose = weight / dose;
-    typename ReaderType::Pointer reader = ReaderType::New();
-    reader->SetFileName(list.PETVolumeName.c_str());
-    try {
-      reader->Update();
-    }
-    catch (...)
-    {
-      std::cout << "Warning: Unable to automatically detect file type for reader.  Trying .nrrd...\n";
-      itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
-      reader->SetImageIO(nrrdIO);
-      reader->Update();
-      std::cout << "Successfully read " << list.PETVolumeName.c_str() << std::endl;
-    }
-
-    typedef itk::ImageRegionIterator<InputImageType> IteratorType;
-    IteratorType it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
-    it.GoToBegin();
-    while (!it.IsAtEnd())
-      {
-      InputPixelType current = it.Get();
-      current *= (tissueConversionFactor * weightByDose);
-      it.Set(current);
-      ++it;
-      }
-
-    typename WriterType::Pointer writer = WriterType::New();
-    writer->SetFileName(list.SUVVolumeName.c_str());
-    writer->SetInput(reader->GetOutput());
-    try {
-      writer->Update();
-    }
-    catch (...)
-    {
-      std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
-      itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
-      writer->SetImageIO(nrrdIO);
-      writer->Update();
-      std::cout << "Successfully wrote " << list.SUVVolumeName.c_str() << std::endl;
-    }
-  }*/
-  
-/*  // calculate SUVConversionFactors
-  double SUVbwConversionFactor = 0.0;
-  double SUVlbmConversionFactor = 0.0;
-  double SUVbsaConversionFactor = 0.0;
-  double SUVibwConversionFactor = 0.0;
-  if( decayedDose == 0.0 )
-    {
-    // oops, weight by dose is infinity. give error
-    std::cerr << "ComputeSUV: Got 0.0 converted dose!" << std::endl;
-    return EXIT_FAILURE;
-    }
-  else
-    { //All values okay; perform calculation
-      SUVbwConversionFactor = weight * tissueConversionFactor / decayedDose;
-      if(list.patientHeight != 0.0)
-      {
-        SUVbsaConversionFactor = (pow(weight,0.425)*pow(height,0.725)*0.007184)*tissueConversionFactor / decayedDose;
-        if(list.patientSex=="M")
-        {
-          SUVlbmConversionFactor = (1.10*weight - 120*(weight/height)*(weight/height))*tissueConversionFactor / decayedDose;
-          SUVibwConversionFactor = (48.0 + 1.06*(height - 152))*tissueConversionFactor / decayedDose;
-        }
-        if(list.patientSex=="F")
-        {
-          SUVlbmConversionFactor = (1.07*weight - 148*(weight/height)*(weight/height))*tissueConversionFactor / decayedDose;
-          SUVibwConversionFactor = (45.5 + 0.91*(height - 152))*tissueConversionFactor / decayedDose;
-        }
-      }
-    }*/
   ofstream writeFile;
   writeFile.open( list.returnParameterFile.c_str() );
  
@@ -1489,7 +1408,6 @@ int LoadImagesAndComputeSUV( parameters & list )
   writeFile << "SUVibwConversionFactor = " << SUVibwConversionFactor << std::endl;
 
   writeFile.close();
-  //reader1->Delete();
   return EXIT_SUCCESS;
 
 }
