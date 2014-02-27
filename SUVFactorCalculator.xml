@@ -27,121 +27,109 @@
       <name>radioactivityUnits</name>
       <label>Radioactivity Units</label>
       <channel>output</channel>
-      <description><![CDATA[.]]></description>
-    </string>
-    <string>
-      <name>tissueRadioactivityUnits</name>
-      <label>Tissue Radioactivity Units</label>
-      <channel>output</channel>
-      <description><![CDATA[ .]]></description>
+      <description><![CDATA[DICOM Tag (0054,1001) - Radioactivity Units]]></description>
     </string>
     <string>
       <name>weightUnits</name>
       <label>Weight Units</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Patient weight units (always assumed to be kg)]]></description>
     </string>
     <string>
       <name>heightUnits</name>
       <label>Height Units</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Patient weight units (always assumed to be meters)]]></description>
     </string>
     <string>
       <name>volumeUnits</name>
       <label>Volume Units</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Volume units for concentration (always assumed to be mL)]]></description>
     </string>
     <string>
       <name>injectedDose</name>
       <label>Injected Dose</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
-    </string>
-    <string>
-      <name>calibrationFactor</name>
-      <label>Calibration Factor</label>
-      <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0018,1074) - Radionuclide Total Dose]]></description>
     </string>
     <string>
       <name>patientWeight</name>
       <label>Patient Weight</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0010,1030) - Patient Weight]]></description>
     </string>
     <string>
       <name>patientHeight</name>
       <label>Patient Height</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0010,1020) - Patient Size]]></description>
     </string>
     <string>
       <name>patientSex</name>
       <label>Patient Sex</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0010,0040) - Patient Sex]]></description>
     </string>
     <string>
       <name>seriesReferenceTime</name>
       <label>Series Reference Time</label>
       <channel>output</channel>
-      <description><![CDATA[ .]]></description>
+      <description><![CDATA[DICOM Tag (0008,0031) - Series Time]]></description>
     </string>
     <string>
       <name>injectionTime</name>
       <label>Injection Time</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0018,1072) - Radiopharmaceutical Start Time]]></description>
     </string>
     <string>
       <name>decayCorrection</name>
       <label>Decay Correction</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0054,1102) - Decay Correction]]></description>
     </string>
     <string>
       <name>decayFactor</name>
       <label>Decay Factor</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0054,1321) - Decay Factor]]></description>
     </string>
     <string>
       <name>radionuclideHalfLife</name>
-      <label>Radionuclide Half-life Correction</label>
+      <label>Radionuclide Half-life</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0018,1075) - Radionuclide Half-Life]]></description>
     </string>
     <string>
       <name>frameReferenceTime</name>
       <label>Frame Reference Time</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[DICOM Tag (0054,1300) - Frame Reference Time]]></description>
     </string>
     <string>
       <name>SUVbwConversionFactor</name>
       <label>SUVbw Conversion Factor</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Standardized Uptake Value (body weight) Conversion Factor]]></description>
     </string>
     <string>
       <name>SUVlbmConversionFactor</name>
       <label>SUVlbm Conversion Factor</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Standardized Uptake Value (lean body mass) Conversion Factor]]></description>
     </string>
     <string>
       <name>SUVbsaConversionFactor</name>
       <label>SUVbsa Conversion Factor</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Standardized Uptake Value (body surface area) Conversion Factor]]></description>
     </string>
     <string>
       <name>SUVibwConversionFactor</name>
       <label>SUVibw Conversion Factor</label>
       <channel>output</channel>
-      <description><![CDATA[. ]]></description>
+      <description><![CDATA[Standardized Uptake Value (ideal body weight) Conversion Factor]]></description>
     </string>
   </parameters>
 </executable>

@@ -76,12 +76,11 @@ struct parameters
     std::string patientName;
     std::string studyDate;
     std::string radioactivityUnits;
-    std::string tissueRadioactivityUnits;
     std::string weightUnits;
     std::string heightUnits;
     std::string volumeUnits;
     double injectedDose;
-    double calibrationFactor;
+    //double calibrationFactor;
     double patientWeight;
     double patientHeight; //in meters
     std::string patientSex;
@@ -919,69 +918,58 @@ int LoadImagesAndComputeSUV( parameters & list )
                ( units.find ("BQML") != std::string::npos) )
             {
               list.radioactivityUnits= "Bq";
-              list.tissueRadioactivityUnits = "Bq";
             }
           else if ( ( units.find ("MBq") != std::string::npos) ||
                     ( units.find ("MBQ") != std::string::npos) )
             {
               list.radioactivityUnits = "MBq";
-              list.tissueRadioactivityUnits = "MBq";
             }
           else if ( (units.find ("kBq") != std::string::npos) ||
                     (units.find ("kBQ") != std::string::npos) ||
                     (units.find ("KBQ") != std::string::npos) )
             {
               list.radioactivityUnits = "kBq";
-              list.tissueRadioactivityUnits = "kBq";
             }
           else if ( (units.find ("mBq") != std::string::npos) ||
                     (units.find ("mBQ") != std::string::npos) )
             {
               list.radioactivityUnits = "mBq";
-              list.tissueRadioactivityUnits = "mBq";
             }
           else if ( (units.find ("uBq") != std::string::npos) ||
                     (units.find ("uBQ") != std::string::npos) )
             {
               list.radioactivityUnits = "uBq";
-              list.tissueRadioactivityUnits = "uBq";
             }
           else if ( (units.find ("Bq") != std::string::npos) ||
                     (units.find ("BQ") != std::string::npos) )
             {
               list.radioactivityUnits = "Bq";
-              list.tissueRadioactivityUnits = "Bq";
             }
           else if ( (units.find ("MCi") != std::string::npos) ||
                     ( units.find ("MCI") != std::string::npos) )
             {
               list.radioactivityUnits = "MCi";
-              list.tissueRadioactivityUnits = "MCi";
             }
           else if ( (units.find ("kCi") != std::string::npos) ||
                     (units.find ("kCI") != std::string::npos)  ||
                     (units.find ("KCI") != std::string::npos) )
             {
               list.radioactivityUnits = "kCi";
-              list.tissueRadioactivityUnits = "kCi";
             }
           else if ( (units.find ("mCi") != std::string::npos) ||
                     (units.find ("mCI") != std::string::npos) )
             {
               list.radioactivityUnits = "mCi";
-              list.tissueRadioactivityUnits = "mCi";
             }
           else if ( (units.find ("uCi") != std::string::npos) ||
                     (units.find ("uCI") != std::string::npos) )
             {
               list.radioactivityUnits = "uCi";
-              list.tissueRadioactivityUnits = "uCi";
             }
           else if ( (units.find ("Ci") != std::string::npos) ||
                     (units.find ("CI") != std::string::npos) )
             {
               list.radioactivityUnits = "Ci";
-              list.tissueRadioactivityUnits = "Ci";
             }
             list.volumeUnits = "ml";
           }
@@ -989,7 +977,6 @@ int LoadImagesAndComputeSUV( parameters & list )
         {
         //--- default values.
           list.radioactivityUnits = "MBq";
-          list.tissueRadioactivityUnits = "MBq";
           list.volumeUnits = "ml";
         }
 
@@ -1208,13 +1195,13 @@ int LoadImagesAndComputeSUV( parameters & list )
           std::cout << "No corrected image detected." << std::endl;
         }
           
-      //---
+      /*//---
       //--- CalibrationFactor
       if(fileReader.GetElementDS(0x7053,0x1009,1,
                                    &list.calibrationFactor,false) != EXIT_SUCCESS)
         {
           list.calibrationFactor =  0.0 ;
-        }
+        }*/
     }
 
   // check.... did we get all params we need for computation?
@@ -1342,12 +1329,11 @@ int LoadImagesAndComputeSUV( parameters & list )
   writeFile.open( list.returnParameterFile.c_str() );
  
   writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
-  writeFile << "tissueRadioactivityUnits = " << list.tissueRadioactivityUnits.c_str() << std::endl;
   writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
   writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
   writeFile << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
   writeFile << "injectedDose = " << list.injectedDose << std::endl;
-  writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
+  //writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
   writeFile << "patientWeight = " << list.patientWeight << std::endl;
   writeFile << "patientHeight = " << list.patientHeight << std::endl;
   writeFile << "patientSex = " << list.patientSex.c_str() << std::endl;
@@ -1394,7 +1380,7 @@ int main( int argc, char * argv[] )
   list.studyDate = "MODULE_INIT_NO_VALUE";
   list.radioactivityUnits = "MODULE_INIT_NO_VALUE";
   list.volumeUnits = "MODULE_INIT_NO_VALUE";
-  list.calibrationFactor = 0.0;
+  //list.calibrationFactor = 0.0;
   list.injectedDose = 0.0;
   list.patientWeight  = 0.0;
   list.patientHeight  = 0.0;
