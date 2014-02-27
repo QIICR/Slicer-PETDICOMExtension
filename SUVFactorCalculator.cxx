@@ -1,43 +1,15 @@
 
 #include "SUVFactorCalculatorCLP.h"
 
-// MRML includes
-//#include <vtkMRMLColorTableNode.h>
-//#include <vtkMRMLColorTableStorageNode.h>
-
-// vtkITK includes
-#include <vtkITKArchetypeImageSeriesScalarReader.h>
-
 // VTK includes
 #include <vtkGlobFileNames.h>
-#include <vtkImageAccumulate.h>
-#include <vtkImageData.h>
-#include <vtkImageThreshold.h>
-#include <vtkImageToImageStencil.h>
-#include <vtkSmartPointer.h>
 
 // ITK includes
-#include <itkGDCMImageIO.h>
 #include <itkGDCMSeriesFileNames.h>
-#include <itkImageFileWriter.h>
 #include <itkImageSeriesReader.h>
-#include <itkImageSeriesReader.h>
-#include <itkMetaDataDictionary.h>
-#include <itkNumericSeriesFileNames.h>
-#include <itkImage.h>
-#include <itkImageFileReader.h>
-#include <itkNrrdImageIO.h>
 
-// GDCM includes
-/*#include <gdcmBinEntry.h>
-#include <gdcmFile.h>
-#include <gdcmGlobal.h>
-#include <gdcmSeqEntry.h>
-#include <gdcmSQItem.h>
-#include <gdcmUtil.h>
-#include <gdcmValEntry.h>*/
 
-#undef HAVE_SSTREAM // allegedly stupid DCMTK Header issue; I've not dealt with it personally
+#undef HAVE_SSTREAM
 #include "itkDCMTKFileReader.h"
 #include <iostream>
 #include <math.h>
@@ -763,31 +735,14 @@ double DecayCorrection(parameters & list, double injectedDose )
 // ...
 // ...............................................................................................
 // ...
-//template <class T>
-//int LoadImagesAndComputeSUV( parameters & list, T )
 int LoadImagesAndComputeSUV( parameters & list )
 {
-
-
-  //typedef    T                           InputPixelType;
-  //typedef itk::Image<InputPixelType,  3> InputImageType;
-
-  //typedef itk::Image<unsigned char, 3> LabelImageType;
-
-  //typedef    T                           OutputPixelType;
-  //typedef itk::Image<OutputPixelType, 3> OutputImageType;
-
-  //typedef itk::ImageFileReader<InputImageType>  ReaderType;
-  //typedef itk::ImageFileReader<LabelImageType>  LabelReaderType;
-  //typedef itk::ImageFileWriter<OutputImageType> WriterType;
-
   // read the DICOM dir to get the radiological data
   typedef short PixelValueType;
   typedef itk::Image< PixelValueType, 3 > VolumeType;
   typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
   typedef itk::Image< PixelValueType, 2 > SliceType;
   typedef itk::ImageFileReader< SliceType > SliceReaderType;
-  typedef itk::GDCMImageIO ImageIOType;
   typedef itk::GDCMSeriesFileNames InputNamesGeneratorType;
   typedef itk::VectorImage< PixelValueType, 3 > NRRDImageType;
 
