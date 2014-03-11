@@ -3,14 +3,14 @@ cmake_minimum_required(VERSION 2.8.7)
 #-----------------------------------------------------------------------------
 set(MODULE_NAME SUVFactorCalculator)
 
-find_package(GenerateCLP REQUIRED)
-include(${GenerateCLP_USE_FILE})
+#find_package(GenerateCLP REQUIRED)
+#include(${GenerateCLP_USE_FILE})
 
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
 set(SUVFACTORCALCULATOR_SOURCE SUVFactorCalculator.cxx)
-GENERATECLP(SUVFACTORCALCULATOR_SOURCE SUVFactorCalculator.xml)
+#GENERATECLP(SUVFACTORCALCULATOR_SOURCE SUVFactorCalculator.xml)
 
 #-----------------------------------------------------------------------------
 set(MODULE_INCLUDE_DIRECTORIES
