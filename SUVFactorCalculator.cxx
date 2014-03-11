@@ -22,11 +22,17 @@ SOME NOTES on SUV and parameters of interest:
 
 This is the first-pass implementation we'll make:
 
-Standardized uptake value, SUV, (also referred to as the dose uptake ratio, DUR) is a widely used, simple PET quantifier, calculated as a ratio of tissue radioactivity concentration (e.g. in units kBq/ml) at time T, CPET(T) and injected dose (e.g. in units MBq) at the time of injection divided by body weight (e.g. in units kg).
+Standardized uptake value, SUV, (also referred to as the dose uptake ratio,
+DUR) is a widely used, simple PET quantifier, calculated as a ratio of tissue
+radioactivity concentration (e.g. in units kBq/ml) at time T, CPET(T) and
+injected dose (e.g. in units MBq) at the time of injection divided by body
+weight (e.g. in units kg).
 
 SUVbw = CPET(T) / (Injected dose / Patient's weight)
 
-Instead of body weight, the injected dose may also be corrected by the lean body mass, or body surface area (BSA) (Kim et al., 1994). Verbraecken et al. (2006) review the different formulas for calculating the BSA.
+Instead of body weight, the injected dose may also be corrected by the lean
+body mass, or body surface area (BSA) (Kim et al., 1994). Verbraecken et al.
+(2006) review the different formulas for calculating the BSA.
 
 SUVbsa= CPET(T) / (Injected dose / BSA)
 
@@ -36,24 +42,44 @@ If the above mentioned units are used, the unit of SUV will be g/ml.
 
 Later, we can try a more careful computation that includes decay correction:
 
-Most PET systems record their pixels in units of activity concentration (MBq/ml) (once Rescale Slope has been applied, and the units are specified in the Units attribute).
+Most PET systems record their pixels in units of activity concentration
+(MBq/ml) (once Rescale Slope has been applied, and the units are specified in
+the Units attribute).
 
-To compute SUVbw, for example, it is necessary to apply the decay formula and account for the patient's weight. For that to be possible, during de-identification, the Patient's Weight must not have been removed, and even though dates may have been removed, it is important not to remove the times, since the difference between the time of injection and the acquisition time is what is important.
+To compute SUVbw, for example, it is necessary to apply the decay formula and
+account for the patient's weight. For that to be possible, during
+de-identification, the Patient's Weight must not have been removed, and even
+though dates may have been removed, it is important not to remove the times,
+since the difference between the time of injection and the acquisition time is
+what is important.
 
 In particular, DO NOT REMOVE THE FOLLOWING DICOM TAGS:
-Radiopharmaceutical Start Time (0018,1072) Decay Correction (0054,1102) Decay Factor (0054,1321) Frame Reference Time (0054,1300) Radionuclide Half Life (0018,1075) Series Time (0008,0031) Patient's Weight (0010,1030)
+* Radiopharmaceutical Start Time (0018,1072) 
+* Decay Correction (0054,1102) 
+* Decay Factor (0054,1321) 
+* Frame Reference Time (0054,1300) 
+* Radionuclide Half Life (0018,1075) 
+* Series Time (0008,0031) 
+* Patient's Weight (0010,1030)
 
-Note that to calculate other common SUV values like SUVlbm and SUVbsa, you also need to retain:
-Patient's Sex (0010,0040)
-Patient's Size (0010,1020)
+Note that to calculate other common SUV values like SUVlbm and SUVbsa, you also
+need to retain: 
+* Patient's Sex (0010,0040)
+* Patient's Size (0010,1020)
 
-If there is a strong need to remove times from an identity leakage perspective, then one can normalize all times to some epoch, but it has to be done consistently across all images in the entire study (preferably including the CT reference images); note though, that the time of injection may be EARLIER than the Study Time, which you might assume would be the earliest, so it takes a lot of effort to get this right.
+If there is a strong need to remove times from an identity leakage perspective,
+then one can normalize all times to some epoch, but it has to be done
+consistently across all images in the entire study (preferably including the CT
+reference images); note though, that the time of injection may be EARLIER than
+the Study Time, which you might assume would be the earliest, so it takes a lot
+of effort to get this right.
 
-For Philips images, none of this applies, and the images are in COUNTS and the private tag (7053,1000) SUV Factor must be used.
-To calculate the SUV of a particular pixel, you just have to calculate [pixel _value * tag 7053|1000 ]
+For Philips images, none of this applies, and the images are in COUNTS and the
+private tag (7053,1000) SUV Factor must be used.  To calculate the SUV of a
+particular pixel, you just have to calculate [pixel _value * tag 7053|1000 ]
 
-The tag 7053|1000 is a number (double) taking into account the patient's weight, the injection quantity.
-We get the tag from the original file with:
+The tag 7053|1000 is a number (double) taking into account the patient's
+weight, the injection quantity.  We get the tag from the original file with:
 
 double suv;
 itk::ExposeMetaData<double>(*dictionary[i], "7053|1000", suv);
@@ -67,6 +93,7 @@ itk::ExposeMetaData<double>(*dictionary[i], "7053|1000", suv);
 // thing should be in an anonymous namespace except for the module
 // entry point, e.g. main()
 //
+
 namespace
 {
 
@@ -93,20 +120,6 @@ struct parameters
     std::string returnParameterFile;
     
     std::string correctedImage;
-    /*std::string decayCorrection; 
-    std::string units;
-    std::string radiopharmInfoSequence;
-    std::string radionuclideHalfLife;
-    std::string radionuclideTotalDose;
-    std::string radiopharmStartTime;
-    std::string seriesDate;
-    std::string seriesTime;
-    std::string acquisitionDate;
-    std::string acquisitionTime;
-    double patientWeight;
-    double patientHeight;
-    std::string weightUnits;
-    std::string heightUnits;*/
 };
 
 // ...
@@ -737,13 +750,7 @@ double DecayCorrection(parameters & list, double injectedDose )
 int LoadImagesAndComputeSUV( parameters & list )
 {
   // read the DICOM dir to get the radiological data
-  typedef short PixelValueType;
-  typedef itk::Image< PixelValueType, 3 > VolumeType;
-  typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
-  typedef itk::Image< PixelValueType, 2 > SliceType;
-  typedef itk::ImageFileReader< SliceType > SliceReaderType;
   typedef itk::GDCMSeriesFileNames InputNamesGeneratorType;
-  typedef itk::VectorImage< PixelValueType, 3 > NRRDImageType;
 
   if ( !list.PETDICOMPath.compare(""))
     {
@@ -1380,7 +1387,6 @@ int main( int argc, char * argv[] )
   list.studyDate = "MODULE_INIT_NO_VALUE";
   list.radioactivityUnits = "MODULE_INIT_NO_VALUE";
   list.volumeUnits = "MODULE_INIT_NO_VALUE";
-  //list.calibrationFactor = 0.0;
   list.injectedDose = 0.0;
   list.patientWeight  = 0.0;
   list.patientHeight  = 0.0;
@@ -1393,20 +1399,6 @@ int main( int argc, char * argv[] )
   list.frameReferenceTime = "MODULE_INIT_NO_VALUE";
   list.weightUnits = "kg";
   list.correctedImage = "MODULE_INIT_NO_VALUE";
-  /*list.decayCorrection; 
-  list.units;
-  list.radiopharmInfoSequence;
-  list.radionuclideHalfLife;
-  list.radionuclideTotalDose;
-  list.radiopharmStartTime;
-  list.seriesDate;
-  list.seriesTime;
-  list.acquisitionDate;
-  list.acquisitionTime;
-  list.patientWeight;
-  list.patientHeight;
-  list.weightUnits;
-  list.heightUnits;*/
 
   try
     {
@@ -1415,7 +1407,6 @@ int main( int argc, char * argv[] )
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
-    //LoadImagesAndComputeSUV( list, static_cast<double>(0) );
     LoadImagesAndComputeSUV( list );
     }
 
