@@ -18,11 +18,21 @@
       <flag>-p</flag>
       <longflag>--petDICOMPath</longflag>
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
-    </directory>
+      </directory>
   </parameters>
   <parameters>
     <label>Output</label>
     <description><![CDATA[output]]></description>
+    
+    <directory>
+      <name>RWVDICOMPath</name>
+      <label>RWV mapping object DICOM volume path</label>
+      <channel>output</channel>
+      <flag>-r</flag>
+      <longflag>--rwvmDICOMPath</longflag>
+      <description><![CDATA[Input path to a directory to store the RWV object with the SUV computation result]]></description>
+    </directory>
+
     <string>
       <name>radioactivityUnits</name>
       <label>Radioactivity Units</label>

@@ -21,6 +21,8 @@ set(MODULE_INCLUDE_DIRECTORIES
 set(MODULE_SRCS
   itkDCMTKFileReader.cxx
   itkDCMTKFileReader.h
+  dcmHelpersCommon.cxx
+  dcmHelpersCommon.h
   )
 
 set(MODULE_TARGET_LIBRARIES
