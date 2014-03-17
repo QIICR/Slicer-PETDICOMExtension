@@ -1433,7 +1433,10 @@ bool ExportRWV(std::string inputDir,
 
   // Referenced Series Sequence
   DcmItem *referencedInstanceSeq;
+  OFString petSeriesInstanceUID;
+  petDataset->findAndGetOFString(DCM_SeriesInstanceUID, petSeriesInstanceUID);
   rwvDataset->findOrCreateSequenceItem(DCM_ReferencedSeriesSequence, referencedInstanceSeq);
+  referencedInstanceSeq->putAndInsertString(DCM_SeriesInstanceUID, petSeriesInstanceUID.c_str());
   for(int imageId=0;imageId<instanceUIDs.size();imageId++){
     DcmItem* referencedSOPItem;
     referencedInstanceSeq->findOrCreateSequenceItem(DCM_ReferencedInstanceSequence, referencedSOPItem, imageId);
@@ -1478,6 +1481,7 @@ bool ExportRWV(std::string inputDir,
   rwvDataset->putAndInsertString(DCM_InstanceNumber, "1");
   rwvDataset->putAndInsertString(DCM_ContentDescription, "RWV");
   rwvDataset->putAndInsertString(DCM_ContentCreatorName, "QIICR");
+  rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
 
   std::string outputFileName = outputDir+"/"+uid+".dcm";
   std::cout << "saving to " << outputFileName << std::endl;
