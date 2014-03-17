@@ -1383,6 +1383,18 @@ int LoadImagesAndComputeSUV( parameters & list )
 
 } // end of anonymous namespace
 
+void InsertCodeSequence(DcmItem* item, const DcmTag tag, const DSRCodedEntryValue entry){
+
+  DcmItem *codeSequenceItem;
+
+  item->findOrCreateSequenceItem(tag, codeSequenceItem);
+
+  codeSequenceItem->putAndInsertString(DCM_CodeValue, entry.getCodeValue().c_str());
+  codeSequenceItem->putAndInsertString(DCM_CodeMeaning, entry.getCodeMeaning().c_str());
+  codeSequenceItem->putAndInsertString(DCM_CodingSchemeDesignator, entry.getCodingSchemeDesignator().c_str());
+
+}
+
 bool ExportRWV(std::string inputDir,
     std::vector<DSRCodedEntryValue> measurementUnitsList,
     std::vector<std::string> measurementsList,
@@ -1462,12 +1474,20 @@ bool ExportRWV(std::string inputDir,
     rwvSeqItem->putAndInsertUint16(DCM_RealWorldValueLastValueMapped,10000);
     rwvSeqItem->putAndInsertString(DCM_RealWorldValueIntercept,"0");
     rwvSeqItem->putAndInsertString(DCM_RealWorldValueSlope, measurementsList[measurementId].c_str());
-    rwvSeqItem->findOrCreateSequenceItem(DCM_MeasurementUnitsCodeSequence, rwvUnits);
 
+    InsertCodeSequence(rwvSeqItem, DCM_MeasurementUnitsCodeSequence,
+                       DSRCodedEntryValue(measurementUnitsList[measurementId].getCodeValue().c_str(),
+                                          measurementUnitsList[measurementId].getCodingSchemeDesignator().c_str(),
+                                          measurementUnitsList[measurementId].getCodeMeaning().c_str()));
 
-    rwvUnits->putAndInsertString(DCM_CodeValue, measurementUnitsList[measurementId].getCodeValue().c_str());
-    rwvUnits->putAndInsertString(DCM_CodeMeaning, measurementUnitsList[measurementId].getCodeMeaning().c_str());
-    rwvUnits->putAndInsertString(DCM_CodingSchemeDesignator, measurementUnitsList[measurementId].getCodingSchemeDesignator().c_str());
+    // private stuff, pending amendment of the standard
+    if(0){
+      rwvSeqItem->putAndInsertString(DcmTag(0x0041,0x0010, EVR_LO),"PixelMed Publishing");
+      InsertCodeSequence(rwvSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
+      InsertCodeSequence(rwvSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
+    }
 
     for(int imageId=0;imageId<instanceUIDs.size();imageId++){
       DcmItem* referencedSOPItem;
@@ -1475,6 +1495,7 @@ bool ExportRWV(std::string inputDir,
       referencedSOPItem->putAndInsertString(DCM_ReferencedSOPClassUID, UID_PositronEmissionTomographyImageStorage);
       referencedSOPItem->putAndInsertString(DCM_ReferencedSOPInstanceUID, instanceUIDs[imageId].c_str());
     }
+
   }
 
   rwvDataset->putAndInsertString(DCM_ContentLabel, "RWV");
@@ -1482,6 +1503,17 @@ bool ExportRWV(std::string inputDir,
   rwvDataset->putAndInsertString(DCM_ContentDescription, "RWV");
   rwvDataset->putAndInsertString(DCM_ContentCreatorName, "QIICR");
   rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
+
+  // private coding scheme
+  if(0){
+    DcmItem *privateCodingSchemeItem;
+    rwvDataset->findOrCreateSequenceItem(DCM_CodingSchemeIdentificationSequence, privateCodingSchemeItem);
+
+    // David Clunie's coding scheme, pending correction of the standard
+    privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeDesignator, "99PMP");
+    privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeUID, "1.3.6.1.4.1.5962.98.1");
+    privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeName, "PixelMed Publishing");
+  }
 
   std::string outputFileName = outputDir+"/"+uid+".dcm";
   std::cout << "saving to " << outputFileName << std::endl;
