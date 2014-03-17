@@ -1571,34 +1571,37 @@ int main( int argc, char * argv[] )
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
     std::cout << "saving numbers to " << returnParameterFile << std::endl;
-    LoadImagesAndComputeSUV( list );
+    if(LoadImagesAndComputeSUV( list ) != EXIT_FAILURE){
 
-    std::vector<DSRCodedEntryValue> measurementsUnitsList;
-    std::vector<std::string> measurementsList;
+      std::vector<DSRCodedEntryValue> measurementsUnitsList;
+      std::vector<std::string> measurementsList;
 
-    std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
-    SUVbwSStream << list.SUVbwConversionFactor;
-    SUVlbmSStream << list.SUVlbmConversionFactor;
-    SUVbsaSStream << list.SUVbsaConversionFactor;
-    SUVibwSStream << list.SUVibwConversionFactor;
+      std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
+      SUVbwSStream << list.SUVbwConversionFactor;
+      SUVlbmSStream << list.SUVlbmConversionFactor;
+      SUVbsaSStream << list.SUVbsaConversionFactor;
+      SUVibwSStream << list.SUVibwConversionFactor;
 
-    measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
-    measurementsList.push_back(SUVbwSStream.str());
+      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
+      measurementsList.push_back(SUVbwSStream.str());
 
-    measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
-    measurementsList.push_back(SUVlbmSStream.str());
+      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
+      measurementsList.push_back(SUVlbmSStream.str());
 
-    measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
-    measurementsList.push_back(SUVbsaSStream.str());
+      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
+      measurementsList.push_back(SUVbsaSStream.str());
 
-    measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
-    measurementsList.push_back(SUVibwSStream.str());
+      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
+      measurementsList.push_back(SUVibwSStream.str());
 
-    ExportRWV(PETDICOMPath, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
+      ExportRWV(PETDICOMPath, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
 
-    std::cout << list.SUVbsaConversionFactor << " " << list.SUVbwConversionFactor << " " <<
-                 list.SUVlbmConversionFactor << " " << list.SUVibwConversionFactor << std::endl;
-    }
+      std::cout << list.SUVbsaConversionFactor << " " << list.SUVbwConversionFactor << " " <<
+                   list.SUVlbmConversionFactor << " " << list.SUVibwConversionFactor << std::endl;
+      } else {
+        std::cerr << "ERROR: Failed to compute SUV" << std::endl;
+      }
+  }
 
   catch( itk::ExceptionObject & excep )
     {
