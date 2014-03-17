@@ -788,6 +788,9 @@ int LoadImagesAndComputeSUV( parameters & list )
   inputNames->SetDirectory(list.PETDICOMPath);
   itk::SerieUIDContainer seriesUIDs = inputNames->GetSeriesUIDs();
 
+  typedef short PixelValueType;
+  typedef itk::Image< PixelValueType, 3 > VolumeType;
+  typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
   const VolumeReaderType::FileNamesContainer & filenames = inputNames->GetFileNames(seriesUIDs[0]);
 
   std::string tag;
