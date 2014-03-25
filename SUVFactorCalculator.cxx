@@ -8,6 +8,11 @@
 // ITK includes
 #include <itkGDCMSeriesFileNames.h>
 #include <itkImageSeriesReader.h>
+#include <itkImageFileReader.h>
+#include <itkNrrdImageIO.h>
+#include <itkImageFileWriter.h>
+#include <itkImageRegionIterator.h>
+#include <itkImageDuplicator.h>
 
 
 #undef HAVE_SSTREAM
@@ -112,6 +117,11 @@ namespace
 struct parameters
   {
     std::string PETDICOMPath;
+    std::string PETImageName;
+    std::string SUVBWName;
+    std::string SUVBSAName;
+    std::string SUVLBMName;
+    std::string SUVIBWName;
     std::string patientName;
     std::string studyDate;
     std::string radioactivityUnits;
@@ -1259,7 +1269,7 @@ int LoadImagesAndComputeSUV( parameters & list )
       return EXIT_FAILURE;
     }
 
-//TODO calculate SUV conversion factors
+
   list.SUVbwConversionFactor = 0.0;
   list.SUVlbmConversionFactor = 0.0;
   list.SUVbsaConversionFactor = 0.0;
@@ -1314,7 +1324,8 @@ int LoadImagesAndComputeSUV( parameters & list )
                       list.SUVbsaConversionFactor = bodySurfaceArea / decayedDose;
                       if(list.patientSex=="M")
                         {
-                          leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
+                          //leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
+                          leanBodyMass = 1.10*weight - 128*(weight/height)*(weight/height);  //TODO verify this formula
                           //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
                           list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
                           
@@ -1335,21 +1346,31 @@ int LoadImagesAndComputeSUV( parameters & list )
                           list.SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
                     }
+                  else
+                    {
+                      std::cout << "Warning: No patient height detected.  Cannot determine SUVbsa, SUVlbm, and SUVibw conversion factors." << std::endl;
+                      //list.SUVbsaConversionFactor = NULL;
+                      //list.SUVlbmConversionFactor = NULL;
+                      //list.SUVibwConversionFactor = NULL;
+                    }
                 }
             }
           else
             {
               std::cout << "Decay correction is not START." << std::endl;
+              return EXIT_FAILURE;
             }
         }
       else
         {
           std::cout << "No attenuation/decay correction detected." << std::endl;
+          return EXIT_FAILURE;
         }
     }
   else
     {
       std::cout << "No corrected image detected." << std::endl;
+      return EXIT_FAILURE;
     }
 
   ofstream writeFile;
@@ -1376,6 +1397,129 @@ int LoadImagesAndComputeSUV( parameters & list )
   writeFile << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
 
   writeFile.close();
+  
+  //All values okay; perform calculation
+  typedef itk::Image<float,3> InputImageType;
+  typedef itk::ImageFileReader<InputImageType>  ReaderType;
+  ReaderType::Pointer reader = ReaderType::New();
+  reader->SetFileName(list.PETImageName.c_str());
+  try {
+    reader->Update();
+  }
+  catch (...)
+  {
+    std::cout << "Warning: Unable to automatically detect file type for reader.  Trying .nrrd...\n";
+    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
+    reader->SetImageIO(nrrdIO);
+    reader->Update();
+    std::cout << "Successfully read " << list.PETImageName.c_str() << std::endl;
+  }
+  // make copies of the input volume
+  typedef itk::ImageDuplicator<InputImageType> DuplicatorType;
+  DuplicatorType::Pointer duplicatorSUVbw = DuplicatorType::New();
+  duplicatorSUVbw->SetInputImage(reader->GetOutput());
+  duplicatorSUVbw->Update();
+  InputImageType::Pointer outputImageSUVbw = duplicatorSUVbw->GetModifiableOutput();
+  
+  DuplicatorType::Pointer duplicatorSUVbsa = DuplicatorType::New();
+  duplicatorSUVbsa->SetInputImage(reader->GetOutput());
+  duplicatorSUVbsa->Update();
+  InputImageType::Pointer outputImageSUVbsa = duplicatorSUVbsa->GetModifiableOutput();
+  
+  DuplicatorType::Pointer duplicatorSUVlbm = DuplicatorType::New();
+  duplicatorSUVlbm->SetInputImage(reader->GetOutput());
+  duplicatorSUVlbm->Update();
+  InputImageType::Pointer outputImageSUVlbm = duplicatorSUVlbm->GetModifiableOutput();
+  
+  DuplicatorType::Pointer duplicatorSUVibw = DuplicatorType::New();
+  duplicatorSUVibw->SetInputImage(reader->GetOutput());
+  duplicatorSUVibw->Update();
+  InputImageType::Pointer outputImageSUVibw = duplicatorSUVibw->GetModifiableOutput();
+  
+  typedef itk::ImageRegionIterator<InputImageType> IteratorType;
+  IteratorType itBW(outputImageSUVbw, outputImageSUVbw->GetLargestPossibleRegion());
+  IteratorType itBSA(outputImageSUVbsa, outputImageSUVbsa->GetLargestPossibleRegion());
+  IteratorType itLBM(outputImageSUVlbm, outputImageSUVlbm->GetLargestPossibleRegion());
+  IteratorType itIBW(outputImageSUVibw, outputImageSUVibw->GetLargestPossibleRegion());
+  itBW.GoToBegin();
+  itBSA.GoToBegin();
+  itLBM.GoToBegin();
+  itIBW.GoToBegin();
+  while (!itBW.IsAtEnd() && !itBSA.IsAtEnd() && !itLBM.IsAtEnd() && !itIBW.IsAtEnd())
+    {
+      double currentBW = itBW.Get();
+      double currentBSA = itBSA.Get();
+      double currentLBM = itLBM.Get();
+      double currentIBW = itIBW.Get();
+      currentBW *= list.SUVbwConversionFactor;
+      currentBSA *= list.SUVbsaConversionFactor;
+      currentLBM *= list.SUVlbmConversionFactor;
+      currentIBW *= list.SUVibwConversionFactor;
+      itBW.Set(currentBW);
+      itBSA.Set(currentBSA);
+      itLBM.Set(currentLBM);
+      itIBW.Set(currentIBW);
+      ++itBW; ++itBSA; ++itLBM; ++itIBW;
+    }
+  typedef itk::Image<float,3> OutputImageType;
+  typedef itk::ImageFileWriter<OutputImageType>  WriterType;
+  WriterType::Pointer writerBW = WriterType::New();
+  writerBW->SetFileName(list.SUVBWName.c_str());
+  writerBW->SetInput(outputImageSUVbw);
+  try {
+    writerBW->Update();
+  }
+  catch (...)
+  {
+    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
+    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
+    writerBW->SetImageIO(nrrdIO);
+    writerBW->Update();
+    std::cout << "Successfully wrote " << list.SUVBWName.c_str() << std::endl;
+  }
+  WriterType::Pointer writerBSA = WriterType::New();
+  writerBSA->SetFileName(list.SUVBSAName.c_str());
+  writerBSA->SetInput(outputImageSUVbsa);
+  try {
+    writerBSA->Update();
+  }
+  catch (...)
+  {
+    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
+    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
+    writerBSA->SetImageIO(nrrdIO);
+    writerBSA->Update();
+    std::cout << "Successfully wrote " << list.SUVBSAName.c_str() << std::endl;
+  }
+  WriterType::Pointer writerLBM = WriterType::New();
+  writerLBM->SetFileName(list.SUVLBMName.c_str());
+  writerLBM->SetInput(outputImageSUVlbm);
+  try {
+    writerLBM->Update();
+  }
+  catch (...)
+  {
+    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
+    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
+    writerLBM->SetImageIO(nrrdIO);
+    writerLBM->Update();
+    std::cout << "Successfully wrote " << list.SUVLBMName.c_str() << std::endl;
+  }
+  WriterType::Pointer writerIBW = WriterType::New();
+  writerIBW->SetFileName(list.SUVIBWName.c_str());
+  writerIBW->SetInput(outputImageSUVibw);
+  try {
+    writerIBW->Update();
+  }
+  catch (...)
+  {
+    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
+    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
+    writerIBW->SetImageIO(nrrdIO);
+    writerIBW->Update();
+    std::cout << "Successfully wrote " << list.SUVIBWName.c_str() << std::endl;
+  }
+  
   return EXIT_SUCCESS;
 
 }
@@ -1567,6 +1711,11 @@ int main( int argc, char * argv[] )
     {
     // pass the input parameters to the helper method
     list.PETDICOMPath = PETDICOMPath;
+    list.PETImageName = PETImageName;
+    list.SUVBWName = SUVBWName;
+    list.SUVBSAName = SUVBSAName;
+    list.SUVLBMName = SUVLBMName;
+    list.SUVIBWName = SUVIBWName;
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
@@ -1577,7 +1726,7 @@ int main( int argc, char * argv[] )
       std::vector<std::string> measurementsList;
 
       std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
-      SUVbwSStream << list.SUVbwConversionFactor;
+     /* SUVbwSStream << list.SUVbwConversionFactor;
       SUVlbmSStream << list.SUVlbmConversionFactor;
       SUVbsaSStream << list.SUVbsaConversionFactor;
       SUVibwSStream << list.SUVibwConversionFactor;
@@ -1592,14 +1741,41 @@ int main( int argc, char * argv[] )
       measurementsList.push_back(SUVbsaSStream.str());
 
       measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
-      measurementsList.push_back(SUVibwSStream.str());
+      measurementsList.push_back(SUVibwSStream.str());*/
+      
+      if(list.SUVbwConversionFactor!=0.0)
+        {
+          SUVbwSStream << list.SUVbwConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
+          measurementsList.push_back(SUVbwSStream.str());
+        }
+      if(list.SUVlbmConversionFactor!=0.0)
+        {
+          SUVlbmSStream << list.SUVlbmConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
+          measurementsList.push_back(SUVlbmSStream.str());
+        }
+      if(list.SUVbsaConversionFactor!=0.0)
+        {
+          SUVbsaSStream << list.SUVbsaConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
+          measurementsList.push_back(SUVbsaSStream.str());
+        }
+      if(list.SUVibwConversionFactor!=0.0)
+        {
+          SUVibwSStream << list.SUVibwConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
+          measurementsList.push_back(SUVibwSStream.str());
+        }
 
       ExportRWV(PETDICOMPath, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
 
       std::cout << list.SUVbsaConversionFactor << " " << list.SUVbwConversionFactor << " " <<
                    list.SUVlbmConversionFactor << " " << list.SUVibwConversionFactor << std::endl;
+
       } else {
         std::cerr << "ERROR: Failed to compute SUV" << std::endl;
+        return EXIT_FAILURE;
       }
   }
 
