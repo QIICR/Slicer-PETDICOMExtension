@@ -1648,6 +1648,7 @@ bool ExportRWV(std::string inputDir,
   dcmHelpersCommon::copyPatientModule(petDataset, rwvDataset);
   dcmHelpersCommon::copyClinicalTrialSubjectModule(petDataset, rwvDataset);
   dcmHelpersCommon::copyGeneralStudyModule(petDataset, rwvDataset);
+  dcmHelpersCommon::copyPatientStudyModule(petDataset, rwvDataset);
 
   char uid[128];
 
@@ -1689,7 +1690,7 @@ bool ExportRWV(std::string inputDir,
     rwvDataset->findOrCreateSequenceItem(DCM_ReferencedImageRealWorldValueMappingSequence,
                                          referencedImageRWVSeqItem, measurementId);
     referencedImageRWVSeqItem->findOrCreateSequenceItem(DCM_RealWorldValueMappingSequence, rwvSeqItem);
-    rwvSeqItem->putAndInsertString(DCM_LUTExplanation,measurementUnitsList[measurementId].getCodeValue().c_str());
+    rwvSeqItem->putAndInsertString(DCM_LUTExplanation,measurementUnitsList[measurementId].getCodeMeaning().c_str());
     rwvSeqItem->putAndInsertString(DCM_LUTLabel,measurementUnitsList[measurementId].getCodeValue().c_str());
     rwvSeqItem->putAndInsertSint16(DCM_RealWorldValueFirstValueMapped,0);
     rwvSeqItem->putAndInsertUint16(DCM_RealWorldValueLastValueMapped,10000);
