@@ -19,13 +19,6 @@
       <longflag>--petDICOMPath</longflag>
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
     </directory>
-    <image>
-      <name>PETImageName</name>
-      <label>Input Volume Name</label>
-      <description>Input volume image</description>
-      <channel>input</channel>
-      <longflag>petImageName</longflag>
-    </image>
   </parameters>
   <parameters>
     <label>Output Images</label>

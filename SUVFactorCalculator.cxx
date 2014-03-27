@@ -13,6 +13,7 @@
 #include <itkImageFileWriter.h>
 #include <itkImageRegionIterator.h>
 #include <itkImageDuplicator.h>
+#include "itkGDCMImageIO.h"
 
 
 #undef HAVE_SSTREAM
@@ -117,7 +118,6 @@ namespace
 struct parameters
   {
     std::string PETDICOMPath;
-    std::string PETImageName;
     std::string SUVBWName;
     std::string SUVBSAName;
     std::string SUVLBMName;
@@ -762,10 +762,13 @@ double DecayCorrection(parameters & list, double injectedDose )
   double scanTimeSeconds = ConvertTimeToSeconds(list.seriesReferenceTime.c_str() );
   //double scanTimeSeconds = ConvertTimeToSeconds(list.seriesTime.c_str());
   double startTimeSeconds = ConvertTimeToSeconds( list.injectionTime.c_str() );
+  std::cout << "                  RAD. START TIME: " << startTimeSeconds << std::endl;
+  std::cout << "                  SERIES TIME: " << scanTimeSeconds << std::endl;
   //double startTimeSeconds = ConvertTimeToSeconds( list.radiopharmStartTime.c_str());
   double halfLife = atof( list.radionuclideHalfLife.c_str() );
   double decayTime = scanTimeSeconds - startTimeSeconds;
   double decayedDose = injectedDose * (double)pow(2.0, -(decayTime / halfLife) );
+  std::cout << "                  DECAYED DOSE: " << decayedDose << std::endl;
 
   return decayedDose;
 }
@@ -1288,6 +1291,7 @@ int LoadImagesAndComputeSUV( parameters & list )
               double weight = list.patientWeight;
               double height = list.patientHeight*100; //convert to centimeters
               double dose = list.injectedDose;
+         std::cout << "                  INJECTED DOSE: " << list.injectedDose << std::endl;
               if( dose == 0.0 )
                 {
                   std::cerr << "ComputeSUV: Got NULL dose!" << std::endl;
@@ -1400,10 +1404,82 @@ int LoadImagesAndComputeSUV( parameters & list )
   
   //All values okay; perform calculation
   typedef itk::Image<float,3> InputImageType;
-  typedef itk::ImageFileReader<InputImageType>  ReaderType;
+  //typedef itk::ImageFileReader<InputImageType>  ReaderType;
+  //ReaderType::Pointer reader = ReaderType::New();
+  //reader->SetFileName(list.PETImageName.c_str());
+  
+  typedef itk::ImageSeriesReader< InputImageType > ReaderType;
   ReaderType::Pointer reader = ReaderType::New();
-  reader->SetFileName(list.PETImageName.c_str());
-  try {
+  typedef itk::GDCMImageIO       ImageIOType;
+  ImageIOType::Pointer dicomIO = ImageIOType::New();
+  reader->SetImageIO( dicomIO );
+  
+  /*typedef itk::GDCMSeriesFileNames NamesGeneratorType;
+  NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
+  nameGenerator->SetUseSeriesDetails( true );
+  nameGenerator->AddSeriesRestriction("0008|0021" );
+  nameGenerator->SetDirectory( argv[1] );*/
+  
+  //inputNames->SetDirectory(list.PETDICOMPath);
+  //itk::SerieUIDContainer seriesUIDs = inputNames->GetSeriesUIDs();
+  
+  try
+    {
+    std::cout << std::endl << "The directory: " << std::endl;
+    std::cout << list.PETDICOMPath << std::endl;
+    std::cout << "Contains the following DICOM Series: " << std::endl;
+
+    typedef std::vector< std::string >    SeriesIdContainer;
+    
+    //const SeriesIdContainer & seriesUIDs = nameGenerator->GetSeriesUIDs();
+    
+    SeriesIdContainer::const_iterator seriesItr = seriesUIDs.begin();
+    SeriesIdContainer::const_iterator seriesEnd = seriesUIDs.end();
+    while( seriesItr != seriesEnd )
+      {
+      std::cout << seriesItr->c_str() << std::endl;
+      seriesItr++;
+      }
+    //std::string seriesIdentifier;
+    std::string seriesIdentifier = seriesUIDs.begin()->c_str();
+
+   /* if( argc > 3 ) // If no optional series identifier
+      {
+      seriesIdentifier = argv[3];
+      }
+    else
+      {
+      seriesIdentifier = seriesUIDs.begin()->c_str();
+      }*/
+
+    std::cout << "Now reading series: " << std::endl;
+    std::cout << seriesIdentifier << std::endl << std::endl;
+
+   /* typedef std::vector< std::string >   FileNamesContainer;
+    FileNamesContainer fileNames;
+
+    fileNames = nameGenerator->GetFileNames( seriesIdentifier );*/
+    const VolumeReaderType::FileNamesContainer & filenames = inputNames->GetFileNames(seriesUIDs[0]);
+
+    //reader->SetFileNames( fileNames );
+    reader->SetFileNames( filenames );
+    try
+      {
+      reader->Update();
+      }
+    catch (itk::ExceptionObject &ex)
+      {
+      std::cout << ex << std::endl;
+      return EXIT_FAILURE;
+      }
+    }
+  catch (itk::ExceptionObject &ex)
+    {
+    std::cout << ex << std::endl;
+    return EXIT_FAILURE;
+    }
+  
+ /* try {
     reader->Update();
   }
   catch (...)
@@ -1413,8 +1489,8 @@ int LoadImagesAndComputeSUV( parameters & list )
     reader->SetImageIO(nrrdIO);
     reader->Update();
     std::cout << "Successfully read " << list.PETImageName.c_str() << std::endl;
-  }
-  // make copies of the input volume
+  }*/
+  // make copies of the input volume TODO create floating point images TODO
   typedef itk::ImageDuplicator<InputImageType> DuplicatorType;
   DuplicatorType::Pointer duplicatorSUVbw = DuplicatorType::New();
   duplicatorSUVbw->SetInputImage(reader->GetOutput());
@@ -1463,61 +1539,62 @@ int LoadImagesAndComputeSUV( parameters & list )
     }
   typedef itk::Image<float,3> OutputImageType;
   typedef itk::ImageFileWriter<OutputImageType>  WriterType;
-  WriterType::Pointer writerBW = WriterType::New();
-  writerBW->SetFileName(list.SUVBWName.c_str());
-  writerBW->SetInput(outputImageSUVbw);
-  try {
-    writerBW->Update();
-  }
-  catch (...)
+  
+  if(list.SUVbwConversionFactor>0) // valid conversion factor
   {
-    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
-    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
-    writerBW->SetImageIO(nrrdIO);
-    writerBW->Update();
-    std::cout << "Successfully wrote " << list.SUVBWName.c_str() << std::endl;
+    WriterType::Pointer writerBW = WriterType::New();
+    writerBW->SetFileName(list.SUVBWName.c_str());
+    writerBW->SetInput(outputImageSUVbw);
+    try {
+      writerBW->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+      std::cout << ex << std::endl;
+      return EXIT_FAILURE;
+    }
   }
-  WriterType::Pointer writerBSA = WriterType::New();
-  writerBSA->SetFileName(list.SUVBSAName.c_str());
-  writerBSA->SetInput(outputImageSUVbsa);
-  try {
-    writerBSA->Update();
-  }
-  catch (...)
+  if(list.SUVbsaConversionFactor>0) // valid conversion factor
   {
-    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
-    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
-    writerBSA->SetImageIO(nrrdIO);
-    writerBSA->Update();
-    std::cout << "Successfully wrote " << list.SUVBSAName.c_str() << std::endl;
+    WriterType::Pointer writerBSA = WriterType::New();
+    writerBSA->SetFileName(list.SUVBSAName.c_str());
+    writerBSA->SetInput(outputImageSUVbsa);
+    try {
+      writerBSA->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+      std::cout << ex << std::endl;
+      return EXIT_FAILURE;
+    }
   }
-  WriterType::Pointer writerLBM = WriterType::New();
-  writerLBM->SetFileName(list.SUVLBMName.c_str());
-  writerLBM->SetInput(outputImageSUVlbm);
-  try {
-    writerLBM->Update();
-  }
-  catch (...)
+  if(list.SUVlbmConversionFactor>0) // valid conversion factor
   {
-    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
-    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
-    writerLBM->SetImageIO(nrrdIO);
-    writerLBM->Update();
-    std::cout << "Successfully wrote " << list.SUVLBMName.c_str() << std::endl;
+    WriterType::Pointer writerLBM = WriterType::New();
+    writerLBM->SetFileName(list.SUVLBMName.c_str());
+    writerLBM->SetInput(outputImageSUVlbm);
+    try {
+      writerLBM->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+      std::cout << ex << std::endl;
+      return EXIT_FAILURE;
+    }
   }
-  WriterType::Pointer writerIBW = WriterType::New();
-  writerIBW->SetFileName(list.SUVIBWName.c_str());
-  writerIBW->SetInput(outputImageSUVibw);
-  try {
-    writerIBW->Update();
-  }
-  catch (...)
+  if(list.SUVibwConversionFactor>0) // valid conversion factor
   {
-    std::cerr << "Warning: Unable to automatically detect file type for writer.  Trying .nrrd...\n";
-    itk::NrrdImageIO::Pointer nrrdIO = itk::NrrdImageIO::New();
-    writerIBW->SetImageIO(nrrdIO);
-    writerIBW->Update();
-    std::cout << "Successfully wrote " << list.SUVIBWName.c_str() << std::endl;
+    WriterType::Pointer writerIBW = WriterType::New();
+    writerIBW->SetFileName(list.SUVIBWName.c_str());
+    writerIBW->SetInput(outputImageSUVibw);
+    try {
+      writerIBW->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+      std::cout << ex << std::endl;
+      return EXIT_FAILURE;
+    }
   }
   
   return EXIT_SUCCESS;
@@ -1550,7 +1627,7 @@ bool ExportRWV(std::string inputDir,
   DcmFileFormat fileFormat;
   DcmDataset* petDataset;
   std::vector<OFString> instanceUIDs;
-  for(int i=0;i<numFiles;i++){
+  for(unsigned int i=0;i<numFiles;i++){
     if(fileFormat.loadFile((inputDir+"/"+dir.GetFile(i)).c_str()).bad()){
       continue;
     }
@@ -1593,7 +1670,7 @@ bool ExportRWV(std::string inputDir,
   petDataset->findAndGetOFString(DCM_SeriesInstanceUID, petSeriesInstanceUID);
   rwvDataset->findOrCreateSequenceItem(DCM_ReferencedSeriesSequence, referencedInstanceSeq);
   referencedInstanceSeq->putAndInsertString(DCM_SeriesInstanceUID, petSeriesInstanceUID.c_str());
-  for(int imageId=0;imageId<instanceUIDs.size();imageId++){
+  for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
     DcmItem* referencedSOPItem;
     referencedInstanceSeq->findOrCreateSequenceItem(DCM_ReferencedInstanceSequence, referencedSOPItem, imageId);
     referencedSOPItem->putAndInsertString(DCM_ReferencedSOPClassUID, UID_PositronEmissionTomographyImageStorage);
@@ -1607,8 +1684,8 @@ bool ExportRWV(std::string inputDir,
   rwvDataset->putAndInsertString(DCM_ContentDate, contentDate.c_str());
   rwvDataset->putAndInsertString(DCM_ContentTime, contentTime.c_str());
 
-  for(int measurementId=0;measurementId<measurementUnitsList.size();measurementId++){
-    DcmItem *referencedImageRWVSeqItem, *rwvSeqItem, *rwvUnits;
+  for(unsigned int measurementId=0;measurementId<measurementUnitsList.size();measurementId++){
+    DcmItem *referencedImageRWVSeqItem, *rwvSeqItem;//, *rwvUnits;
     rwvDataset->findOrCreateSequenceItem(DCM_ReferencedImageRealWorldValueMappingSequence,
                                          referencedImageRWVSeqItem, measurementId);
     referencedImageRWVSeqItem->findOrCreateSequenceItem(DCM_RealWorldValueMappingSequence, rwvSeqItem);
@@ -1633,7 +1710,7 @@ bool ExportRWV(std::string inputDir,
                          DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
     }
 
-    for(int imageId=0;imageId<instanceUIDs.size();imageId++){
+    for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
       DcmItem* referencedSOPItem;
       referencedImageRWVSeqItem->findOrCreateSequenceItem(DCM_ReferencedImageSequence, referencedSOPItem, imageId);
       referencedSOPItem->putAndInsertString(DCM_ReferencedSOPClassUID, UID_PositronEmissionTomographyImageStorage);
@@ -1711,7 +1788,6 @@ int main( int argc, char * argv[] )
     {
     // pass the input parameters to the helper method
     list.PETDICOMPath = PETDICOMPath;
-    list.PETImageName = PETImageName;
     list.SUVBWName = SUVBWName;
     list.SUVBSAName = SUVBSAName;
     list.SUVLBMName = SUVLBMName;
