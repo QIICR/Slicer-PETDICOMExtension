@@ -96,7 +96,7 @@ For Philips images, none of this applies, and the images are in COUNTS and the
 private tag (7053,1000) SUV Factor must be used.  To calculate the SUV of a
 particular pixel, you just have to calculate [pixel _value * tag 7053|1000 ]
 
-The tag 7053|1000 is a number (double) taking into account the patient's
+The tag 7053|1000 is a number (double) taking into account tn ihe patient's
 weight, the injection quantity.  We get the tag from the original file with:
 
 double suv;
@@ -1604,11 +1604,11 @@ int LoadImagesAndComputeSUV( parameters & list )
 
 } // end of anonymous namespace
 
-void InsertCodeSequence(DcmItem* item, const DcmTag tag, const DSRCodedEntryValue entry){
+void InsertCodeSequence(DcmItem* item, const DcmTag tag, const DSRCodedEntryValue entry, int itemNum=0){
 
   DcmItem *codeSequenceItem;
 
-  item->findOrCreateSequenceItem(tag, codeSequenceItem);
+  item->findOrCreateSequenceItem(tag, codeSequenceItem, itemNum);
 
   codeSequenceItem->putAndInsertString(DCM_CodeValue, entry.getCodeValue().c_str());
   codeSequenceItem->putAndInsertString(DCM_CodeMeaning, entry.getCodeMeaning().c_str());
@@ -1697,19 +1697,51 @@ bool ExportRWV(std::string inputDir,
     rwvSeqItem->putAndInsertString(DCM_RealWorldValueIntercept,"0");
     rwvSeqItem->putAndInsertString(DCM_RealWorldValueSlope, measurementsList[measurementId].c_str());
 
+    DSRCodedEntryValue measurement = measurementUnitsList[measurementId];
     InsertCodeSequence(rwvSeqItem, DCM_MeasurementUnitsCodeSequence,
-                       DSRCodedEntryValue(measurementUnitsList[measurementId].getCodeValue().c_str(),
-                                          measurementUnitsList[measurementId].getCodingSchemeDesignator().c_str(),
-                                          measurementUnitsList[measurementId].getCodeMeaning().c_str()));
+                       DSRCodedEntryValue(measurement.getCodeValue().c_str(),
+                                          measurement.getCodingSchemeDesignator().c_str(),
+                                          measurement.getCodeMeaning().c_str()));
 
     // private stuff, pending amendment of the standard
-    if(0){
-      rwvSeqItem->putAndInsertString(DcmTag(0x0041,0x0010, EVR_LO),"PixelMed Publishing");
-      InsertCodeSequence(rwvSeqItem, DCM_ConceptNameCodeSequence,
-                         DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
-      InsertCodeSequence(rwvSeqItem, DCM_ConceptNameCodeSequence,
-                         DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
+    rwvSeqItem->putAndInsertString(DcmTag(0x0041,0x0010, EVR_LO),"PixelMed Publishing");
+    DcmItem *quantitySeqItem, *measurementMethodSeqItem;
+    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),quantitySeqItem).bad()){
+    //if(rwvSeqItem->findOrCreateSequenceItem(DCM_RealWorldValueMappingSequence,quantitySeqItem).bad()){
+      std::cerr << "Failed to add private sequence" << std::endl;
     }
+    quantitySeqItem->putAndInsertString(DCM_ValueType,"CODE");
+    InsertCodeSequence(quantitySeqItem, DCM_ConceptNameCodeSequence,
+                       DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
+    InsertCodeSequence(quantitySeqItem, DCM_ConceptCodeSequence,
+                       DSRCodedEntryValue("250121","99PMP","Standardized Uptake Value"));
+
+    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),measurementMethodSeqItem, 1).bad()){
+      std::cerr << "Failed to add private sequence" << std::endl;
+    }
+    measurementMethodSeqItem->putAndInsertString(DCM_ValueType,"CODE");
+
+    if(measurement.getCodeValue() == "{SUVbw}g/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250132","99PMP","SUV body weight calculation method"));    
+    } else if(measurement.getCodeValue() == "{SUVlbm}g/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250133","99PMP","SUV lean body mass calculation method"));    
+    } else if(measurement.getCodeValue() == "{SUVbsa}cm2/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250134","99PMP","SUV body surface area calculation method"));    
+    } else if(measurement.getCodeValue() == "{SUVibw}g/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250135","99PMP","SUV ideal body weight calculation method"));    
+    };
 
     for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
       DcmItem* referencedSOPItem;
@@ -1727,15 +1759,13 @@ bool ExportRWV(std::string inputDir,
   rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
 
   // private coding scheme
-  if(0){
-    DcmItem *privateCodingSchemeItem;
-    rwvDataset->findOrCreateSequenceItem(DCM_CodingSchemeIdentificationSequence, privateCodingSchemeItem);
+  DcmItem *privateCodingSchemeItem;
+  rwvDataset->findOrCreateSequenceItem(DCM_CodingSchemeIdentificationSequence, privateCodingSchemeItem);
 
-    // David Clunie's coding scheme, pending correction of the standard
-    privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeDesignator, "99PMP");
-    privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeUID, "1.3.6.1.4.1.5962.98.1");
-    privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeName, "PixelMed Publishing");
-  }
+  // David Clunie's coding scheme, pending correction of the standard
+  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeDesignator, "99PMP");
+  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeUID, "1.3.6.1.4.1.5962.98.1");
+  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeName, "PixelMed Publishing");
 
   std::string outputFileName = outputDir+"/"+uid+".dcm";
   std::cout << "saving to " << outputFileName << std::endl;
