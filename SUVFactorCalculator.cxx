@@ -1540,7 +1540,7 @@ int LoadImagesAndComputeSUV( parameters & list )
   typedef itk::Image<float,3> OutputImageType;
   typedef itk::ImageFileWriter<OutputImageType>  WriterType;
   
-  if(list.SUVbwConversionFactor>0) // valid conversion factor
+  if(list.SUVbwConversionFactor>0 && list.SUVBWName.size()) // valid conversion factor
   {
     WriterType::Pointer writerBW = WriterType::New();
     writerBW->SetFileName(list.SUVBWName.c_str());
@@ -1554,7 +1554,7 @@ int LoadImagesAndComputeSUV( parameters & list )
       return EXIT_FAILURE;
     }
   }
-  if(list.SUVbsaConversionFactor>0) // valid conversion factor
+  if(list.SUVbsaConversionFactor>0 && list.SUVBSAName.size()) // valid conversion factor
   {
     WriterType::Pointer writerBSA = WriterType::New();
     writerBSA->SetFileName(list.SUVBSAName.c_str());
@@ -1568,7 +1568,7 @@ int LoadImagesAndComputeSUV( parameters & list )
       return EXIT_FAILURE;
     }
   }
-  if(list.SUVlbmConversionFactor>0) // valid conversion factor
+  if(list.SUVlbmConversionFactor>0 && list.SUVLBMName.size()) // valid conversion factor
   {
     WriterType::Pointer writerLBM = WriterType::New();
     writerLBM->SetFileName(list.SUVLBMName.c_str());
@@ -1582,7 +1582,7 @@ int LoadImagesAndComputeSUV( parameters & list )
       return EXIT_FAILURE;
     }
   }
-  if(list.SUVibwConversionFactor>0) // valid conversion factor
+  if(list.SUVibwConversionFactor>0 && list.SUVIBWName.size()) // valid conversion factor
   {
     WriterType::Pointer writerIBW = WriterType::New();
     writerIBW->SetFileName(list.SUVIBWName.c_str());
