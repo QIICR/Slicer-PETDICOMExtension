@@ -13,6 +13,13 @@ set(SUVFACTORCALCULATOR_SOURCE SUVFactorCalculator.cxx)
 #GENERATECLP(SUVFACTORCALCULATOR_SOURCE SUVFactorCalculator.xml)
 
 #-----------------------------------------------------------------------------
+SlicerMacroExtractRepositoryInfo(VAR_PREFIX ${MODULE_NAME})
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/CMake/vtk${MODULE_NAME}VersionConfigure.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/vtk${MODULE_NAME}VersionConfigure.h
+    )
+
+#-----------------------------------------------------------------------------
 set(MODULE_INCLUDE_DIRECTORIES
   ${Slicer_Libs_INCLUDE_DIRS}
   ${vtkITK_INCLUDE_DIRS}

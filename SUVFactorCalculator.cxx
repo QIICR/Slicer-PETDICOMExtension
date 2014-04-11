@@ -30,6 +30,9 @@
 #include "dcmtk/dcmsr/dsriodcc.h"
 #include "dcmtk/dcmsr/dsrdoc.h"
 
+// versioning info
+#include "vtkSUVFactorCalculatorVersionConfigure.h"
+
 #include "dcmHelpersCommon.h"
 
 // ...
@@ -1757,6 +1760,7 @@ bool ExportRWV(std::string inputDir,
   rwvDataset->putAndInsertString(DCM_ContentDescription, "RWV");
   rwvDataset->putAndInsertString(DCM_ContentCreatorName, "QIICR");
   rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
+  rwvDataset->putAndInsertString(DCM_SoftwareVersions, SUVFactorCalculator_WC_REVISION);
 
   // private coding scheme
   DcmItem *privateCodingSchemeItem;
@@ -1833,22 +1837,6 @@ int main( int argc, char * argv[] )
       std::vector<std::string> measurementsList;
 
       std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
-     /* SUVbwSStream << list.SUVbwConversionFactor;
-      SUVlbmSStream << list.SUVlbmConversionFactor;
-      SUVbsaSStream << list.SUVbsaConversionFactor;
-      SUVibwSStream << list.SUVibwConversionFactor;
-
-      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
-      measurementsList.push_back(SUVbwSStream.str());
-
-      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
-      measurementsList.push_back(SUVlbmSStream.str());
-
-      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
-      measurementsList.push_back(SUVbsaSStream.str());
-
-      measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
-      measurementsList.push_back(SUVibwSStream.str());*/
       
       if(list.SUVbwConversionFactor!=0.0)
         {

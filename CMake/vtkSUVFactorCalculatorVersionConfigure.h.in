@@ -1,0 +1,18 @@
+/*=auto=========================================================================
+
+ Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
+ All Rights Reserved.
+
+ See COPYRIGHT.txt
+ or http://www.slicer.org/copyright/copyright.txt for details.
+
+ Program:   3D Reporting
+
+=========================================================================auto=*/
+
+#ifndef __vtkSUVFactorCalculatorVersionConfigure_h
+#define __vtkSUVFactorCalculatorVersionConfigure_h
+
+#define SUVFactorCalculator_WC_REVISION "@SUVFactorCalculator_WC_REVISION@"
+
+#endif // __vtkReportingVersionConfigure_h
