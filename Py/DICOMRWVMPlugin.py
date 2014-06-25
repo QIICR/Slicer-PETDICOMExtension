@@ -23,7 +23,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
   def __init__(self):
     super(DICOMRWVMPluginClass,self).__init__()
     self.epsilon = 0.01
-    #print "DICOMRWVMPlugin __init__()"
     self.loadType = "Real World Value Mapping Plugin"
     self.tags['patientID'] = "0010,0020"
     self.tags['patientName'] = "0010,0010"
@@ -32,24 +31,17 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['patientHeight'] = "0010,1020"
     self.tags['patientWeight'] = "0010,1030"
     
-    #self.tags['relatedSeriesSequence'] = "0008,1250"
     self.tags['referencedSeriesSequence'] = "0008,1115"
     
-    #self.tags['radioPharmaconStartTime'] = "0018,1072"
-    #self.tags['decayCorrection'] = "0054,1102"
-    #self.tags['decayFactor'] = "0054,1321"
-    #self.tags['frameRefTime'] = "0054,1300"
-    #self.tags['radionuclideHalfLife'] = "0018,1075"
     self.tags['contentTime'] = "0008,0033"
-    #self.tags['seriesTime'] = "0008,0031" 
+    self.tags['seriesTime'] = "0008,0031" 
     self.tags['contentTime'] = "0008,0033"
     self.tags['triggerTime'] = "0018,1060"
     self.tags['diffusionGradientOrientation'] = "0018,9089"
     self.tags['imageOrientationPatient'] = "0020,0037"
     self.tags['numberOfFrames'] = "0028,0008"
 
-
-    #self.tags['seriesDescription'] = "0008,103e"
+    self.tags['seriesDescription'] = "0008,103e"
     self.tags['seriesModality'] = "0008,0060"
     self.tags['seriesInstanceUID'] = "0020,000E"
     self.tags['sopInstanceUID'] = "0008,0018"
@@ -65,20 +57,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['position'] = "0020,0032"
     self.tags['orientation'] = "0020,0037"
     self.tags['pixelData'] = "7fe0,0010"
-    
-    #self.tags['referencedImageRWVMappingSeq'] = "0008,1140"
+
     self.tags['referencedImageRWVMappingSeq'] = "0040,9094"
  
     
     #self.fileLists = []
-    self.patientName = ""
-    self.patientBirthDate = ""
-    self.patientSex = ""
-    
-    #self.ctTerm = "CT"
-    #self.petTerm = "PT"
-    
-    #slicer.dicomDatabase.setTagsToPrecache(self.tags)
+    #self.patientName = ""
+    #self.patientBirthDate = ""
+    #self.patientSex = ""
 
     self.scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
   
@@ -97,7 +83,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     corresponding to ways of interpreting the
     fileLists parameter.
     """
-    print "DICOMRWVMPlugin::examine()"
     
     loadables = []
     rwvList = []
@@ -115,7 +100,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       if os.path.isfile(fileList[0]):
         dicomFile = dicom.read_file(fileList[0])
         if dicomFile.Modality == "RWV":
-          print "  Modality is RWV"
           # Create loadables from the first file
           dicomFile = dicom.read_file(fileList[0])
           refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
@@ -123,9 +107,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             # Get the Series UID
             for item in refRWVMSeq:
               uid = self.getSeriesUIDFromRWVM(item)
-              print "UID: " + uid
               if uid in seriesUIDs:
-                print "UID " + uid + " is a loadable series"
                 rwvLoadable = DICOMLib.DICOMLoadable()
                 rwvmSeq = item.RealWorldValueMappingSequence
                 maps = []
@@ -387,38 +369,13 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
   
   def load(self,loadable):
-    """Determine the correct conversion factor
-    and load the volume into Slicer
-    """
+    """Use the conversion factor to load the volume into Slicer"""
     sopInstanceUID = self.__getSeriesInformation(loadable.files, self.tags['sopInstanceUID'])
     seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
-    
-    # Determine the conversion factor
+
     conversionFactor = loadable.slope
     factorType = (loadable.name).replace(' ','_')
-    """parameters = {}
-    parameters['PETDICOMPath'] = seriesDirectory
-    SUVFactorCalculator = None
-    SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
-    
-    conversionFactor = 0
-    factorType = ''
-    if loadable.name == " PET SUV(bw) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,14)
-      factorType = 'SUV(bw)'
-    elif loadable.name == " PET SUV(lbm) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,15)
-      factorType = 'SUV(lbm)'
-    elif loadable.name == " PET SUV(bsa) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,16)
-      factorType = 'SUV(bsa)'
-    elif loadable.name == " PET SUV(ibw) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,17)
-      factorType = 'SUV(ibw)'
-    else:
-      conversionFactor = 1"""
-    
-    print "  conversionFactor " + str(conversionFactor)
+
     # Create volume node
     imageNode = self.scalarVolumePlugin.load(loadable)
     multiplier = vtk.vtkImageMathematics()
@@ -437,12 +394,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     # Change display
     displayNode = imageNode.GetVolumeDisplayNode()
     displayNode.SetInterpolate(0)
-    #displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
     
     # Change name
     patientID = self.__getSeriesInformation(loadable.files, self.tags['patientID'])
     studyDate = self.convertStudyDate(loadable.files)
-    name = patientID + '_' + studyDate + '_' + factorType
+    name = patientID.replace(' ','_') + '_' + studyDate + '_' + factorType
     imageNode.SetName(name)
     
     # Set Attributes
@@ -460,60 +416,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
     
     return imageNode
-
-  
-class PETCTSeriesSelectorDialog(object):
-  
-  def __init__(self, parent=None, studyDescription="",petDescriptions=[],ctDescriptions=[],petSelection=0,ctSelection=0):
-    
-    self.studyDescription = studyDescription
-    self.petDescriptions = petDescriptions
-    self.ctDescriptions = ctDescriptions  
-    self.petSelection = petSelection
-    self.ctSelection = ctSelection
-    
-    if not parent:
-      self.parent = qt.QDialog()
-      self.parent.setModal(True)
-      self.parent.setLayout(qt.QGridLayout())
-      self.layout = self.parent.layout()
-      self.setup()
-      self.parent.show()
-      
-    else:
-      self.parent = parent
-      self.layout = parent.layout() 
-      
-  
-  def setup(self):
-      
-    self.studyLabel = qt.QLabel(self.studyDescription)
-    self.studyLabel.setAlignment(qt.Qt.AlignCenter)
-    self.petLabel = qt.QLabel("PET Image Series")
-    self.petLabel.setAlignment(qt.Qt.AlignCenter)
-    self.ctLabel = qt.QLabel("CT Image Series")
-    self.ctLabel.setAlignment(qt.Qt.AlignCenter)
-    self.petList = qt.QListWidget()
-    self.petList.addItems(self.petDescriptions)
-    self.petList.setCurrentRow(self.petSelection)
-    self.ctList = qt.QListWidget()
-    self.ctList.addItems(self.ctDescriptions)
-    self.ctList.setCurrentRow(self.ctSelection)
-    self.button = qt.QPushButton("Ok")
-    
-    self.layout.addWidget(self.studyLabel,0,0,1,2)
-    self.layout.addWidget(self.petLabel,1,0,1,1)
-    self.layout.addWidget(self.ctLabel,1,1,1,1)
-    self.layout.addWidget(self.petList,2,0,1,1)
-    self.layout.addWidget(self.ctList,2,1,1,1)
-    self.layout.addWidget(self.button,3,0,1,2)
-    
-    self.button.connect('clicked()',self.parent.close)    
-      
-
-  def getSelectedSeries(self):
-    return [self.petList.currentRow, self.ctList.currentRow]              
-          
           
   
 #
@@ -526,12 +428,12 @@ class DICOMRWVMPlugin:
   as a loadable scripted module
   """
   def __init__(self, parent):
-    parent.title = "DICOM PET SUV Volume Plugin"
+    parent.title = "DICOM Real World Value Mapping Plugin"
     parent.categories = ["Developer Tools.DICOM Plugins"]
-    parent.contributors = ["Ethan Ulrich (Univ. of Iowa)"]
+    parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Paul Mercea (Univ. of Heidelberg), Andrey Fedorov (BWH)"]
     parent.helpText = """
-    Plugin to the DICOM Module to parse and load PET volumes
-    from DICOM files. Provides options for standardized uptake values.
+    Plugin to the DICOM Module to parse and load DICOM series associated with 
+    Real World Value Mapping objects. Provides options for standardized uptake values.
     No module interface here, only in the DICOM module
     """
     parent.acknowledgementText = """
