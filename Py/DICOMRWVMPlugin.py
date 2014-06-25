@@ -83,18 +83,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     corresponding to ways of interpreting the
     fileLists parameter.
     """
-    
     loadables = []
-    rwvList = []
-    seriesUIDs = []
     filesByUID = {} # indexed dictionary by uid 
     for fileList in fileLists:
-      for dcmFile in fileList:
-        if os.path.isfile(dcmFile):
-          dicomFile = dicom.read_file(dcmFile)
-          if dicomFile.Modality != "RWV":
-            seriesUIDs.append(dicomFile.SOPInstanceUID)
-            filesByUID[dicomFile.SOPInstanceUID] = fileList
+      if os.path.isfile(fileList[0]):
+        dicomFile = dicom.read_file(fileList[0])
+        if dicomFile.Modality == "RWV":
+          filesByUID = self.organizeFilesByUID(fileLists)
+          break # only needed once
     
     for fileList in fileLists:
       if os.path.isfile(fileList[0]):
@@ -107,7 +103,8 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             # Get the Series UID
             for item in refRWVMSeq:
               uid = self.getSeriesUIDFromRWVM(item)
-              if uid in seriesUIDs:
+              #if uid in seriesUIDs:
+              if uid in filesByUID.keys():
                 rwvLoadable = DICOMLib.DICOMLoadable()
                 rwvmSeq = item.RealWorldValueMappingSequence
                 maps = []
@@ -137,6 +134,31 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     imageSeq = refImageSeq.ReferencedImageSequence
     instanceUID = (imageSeq[0])[0x0008,0x1155].value
     return instanceUID
+    
+  def organizeFilesByUID(self, fileLists):
+    """Return a dictionary with UID/seriesFiles pairs """
+    filesByUID = {}
+    for fileList in fileLists:
+      for dcmFile in fileList:
+        if os.path.isfile(dcmFile):
+          dicomFile = dicom.read_file(dcmFile)
+          if dicomFile.Modality != "RWV":
+            uid = dicomFile.SOPInstanceUID
+            if uid in filesByUID:
+              continue
+            else:
+              filesByUID[uid] = fileList
+    """for dcmFile in slicer.dicomDatabase.allFiles():
+      if os.path.isfile(dcmFile):
+        dicomFile = dicom.read_file(dcmFile)
+        if dicomFile.Modality != "RWV":
+          uid = dicomFile.SOPInstanceUID
+          if uid in filesByUID:
+            continue
+          else:
+            filesByUID[uid] = fileList"""
+
+    return filesByUID
     
   def prepareLoadableFiles(self, loadables):
     subseriesTags = [
