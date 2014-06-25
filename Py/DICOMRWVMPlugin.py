@@ -22,15 +22,15 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
   def __init__(self):
     super(DICOMRWVMPluginClass,self).__init__()
-    
+    self.epsilon = 0.01
     #print "DICOMRWVMPlugin __init__()"
     self.loadType = "Real World Value Mapping Plugin"
     self.tags['patientID'] = "0010,0020"
     self.tags['patientName'] = "0010,0010"
     self.tags['patientBirthDate'] = "0010,0030"
     self.tags['patientSex'] = "0010,0040"
-    #self.tags['patientHeight'] = "0010,1020"
-    #self.tags['patientWeight'] = "0010,1030"
+    self.tags['patientHeight'] = "0010,1020"
+    self.tags['patientWeight'] = "0010,1030"
     
     #self.tags['relatedSeriesSequence'] = "0008,1250"
     self.tags['referencedSeriesSequence'] = "0008,1115"
@@ -42,6 +42,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     #self.tags['radionuclideHalfLife'] = "0018,1075"
     self.tags['contentTime'] = "0008,0033"
     #self.tags['seriesTime'] = "0008,0031" 
+    self.tags['contentTime'] = "0008,0033"
+    self.tags['triggerTime'] = "0018,1060"
+    self.tags['diffusionGradientOrientation'] = "0018,9089"
+    self.tags['imageOrientationPatient'] = "0020,0037"
+    self.tags['numberOfFrames'] = "0028,0008"
 
 
     #self.tags['seriesDescription'] = "0008,103e"
@@ -54,12 +59,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['studyTime'] = "0008,0030"
     self.tags['studyID'] = "0020,0010"
     
-    #self.tags['rows'] = "0028,0010"
-    #self.tags['columns'] = "0028,0011"
-    #self.tags['spacing'] = "0028,0030"
-    #self.tags['position'] = "0020,0032"
-    #self.tags['orientation'] = "0020,0037"
-    #self.tags['pixelData'] = "7fe0,0010"
+    self.tags['rows'] = "0028,0010"
+    self.tags['columns'] = "0028,0011"
+    self.tags['spacing'] = "0028,0030"
+    self.tags['position'] = "0020,0032"
+    self.tags['orientation'] = "0020,0037"
+    self.tags['pixelData'] = "7fe0,0010"
     
     #self.tags['referencedImageRWVMappingSeq'] = "0008,1140"
     self.tags['referencedImageRWVMappingSeq'] = "0040,9094"
@@ -103,19 +108,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         if os.path.isfile(dcmFile):
           dicomFile = dicom.read_file(dcmFile)
           if dicomFile.Modality != "RWV":
-          #if self.__getSeriesInformation(fileList, self.tags['seriesModality']) != "RWV":
-            #print dicomFile.SeriesInstanceUID
-            #seriesUIDs.append(dicomFile.SeriesInstanceUID)
             seriesUIDs.append(dicomFile.SOPInstanceUID)
-            #filesByUID.append(fileList)
             filesByUID[dicomFile.SOPInstanceUID] = fileList
-            #print self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
-            #seriesUIDs.append(self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID']))
     
     for fileList in fileLists:
-      #ds = dicom.read_file(fileList)
-      #if ds.Modality == "RWV":
-      #if self.__getSeriesInformation(fileList, self.tags['seriesModality']) == "RWV":
       if os.path.isfile(fileList[0]):
         dicomFile = dicom.read_file(fileList[0])
         if dicomFile.Modality == "RWV":
@@ -148,102 +144,164 @@ class DICOMRWVMPluginClass(DICOMPlugin):
                 rwvLoadable.tooltip = unitMeanings[2].value
                 rwvLoadable.confidence = 0.99
                 rwvLoadable.slope = slope
-                #rwvLoadable.files = self.getReferencedSeriesFilesFromUID(seriesUIDs,uid)
                 rwvLoadable.files = filesByUID[uid]
-                #print "  SLOPE: " + str(rwvLoadable.slope)
                 loadables += [rwvLoadable]
-        
-        """print fileList[0]
-        cachedLoadables = self.getCachedLoadables(fileList)
-        
-        if not cachedLoadables:
-          #print "  not cachedLoadables"
-          cachedLoadables = self.scalarVolumePlugin.examineFiles(fileList)
-          self.cacheLoadables(fileList, cachedLoadables)
-
-        for ldbl in cachedLoadables:
-          if ldbl.selected:
-            dataset = dicom.read_file(ldbl.files[0])
-            refRWVMSeq = dataset.ReferencedImageRealWorldValueMappingSequence            
-            if refRWVMSeq:
-              for item in refRWVMSeq:
-                uids = self.getSeriesUIDsFromRWVM(item)
-                files = self.getReferencedSeriesFilesFromUIDs(cachedLoadables,uids)
-                rwvLoadable = DICOMLib.DICOMLoadable()
-                rwvmSeq = item.RealWorldValueMappingSequence
-                maps = []
-                for mapper in rwvmSeq[0]:
-                  maps.append(mapper)
-                
-                units = maps[2].value
-                lastValueMapped = maps[3].value
-                firstValueMapped = maps[4].value
-                intercept = maps[5].value
-                slope = maps[6].value
-                unitMeanings = []
-                for unitMeaning in maps[1][0]:
-                  unitMeanings.append(unitMeaning)
-                rwvLoadable.name = unitMeanings[2]         
-                rwvLoadable.tooltip = unitMeanings[2]
-                rwvLoadable.confidence = 0.99
-                rwvLoadable.slope = slope
-                #print "  SLOPE: " + str(rwvLoadable.slope)
-                loadables += [rwvLoadable]
-              
-              #rwvList.append(rwvLoadable)
-              #loadables += [rwvLoadable]
-            if self.hasPatientWeight(fileList):
-              bwLoadable.files += ldbl.files
-              if self.hasPatientHeight(fileList):
-                bsaLoadable.files += ldbl.files
-                if self.hasPatientSex(fileList):
-                  ibwLoadable.files += ldbl.files
-                  lbmLoadable.files += ldbl.files"""
-        #self.cacheLoadables(ldbl.files, [ldbl])
-        #break
-  
-    """if bwLoadable.files:
-      loadables += [bwLoadable]
-    if bsaLoadable.files:
-      loadables += [bsaLoadable]
-    if ibwLoadable.files:
-      loadables += [ibwLoadable]
-    if lbmLoadable.files:
-      loadables += [lbmLoadable]"""
-             
+    
+    loadables = self.prepareLoadableFiles(loadables)         
     return loadables
 
   def getSeriesUIDFromRWVM(self, refImageSeq):
     """Return the series UID related to this RWVM object """
     imageSeq = refImageSeq.ReferencedImageSequence
     instanceUID = (imageSeq[0])[0x0008,0x1155].value
-    #for item in imageSeq:
-      #uids.append(item[0x0008,0x1155].value)
-    #return uids
     return instanceUID
-    #uid = ('.').join(instanceUID.split('.')[:-1])
-    #return uid
     
-  def getReferencedSeriesFilesFromUID(self,seriesUIDs,uids):
-    """Return the series files related to a UID"""
-    files = []
-    #if uid in seriesUIDs:
+  def prepareLoadableFiles(self, loadables):
+    subseriesTags = [
+        "seriesInstanceUID",
+        "contentTime",
+        "triggerTime",
+        "diffusionGradientOrientation",
+        "imageOrientationPatient",
+    ]
+    #
+    # first, look for subseries within this series
+    # - build a list of files for each unique value
+    #   of each tag
+    #
+    newLoadables = []
+    for loadable in loadables:
+      # while looping through files, keep track of their
+      # position and orientation for later use
+      positions = {}
+      orientations = {}
+      subseriesFiles = {}
+      subseriesValues = {}
+      for file in loadable.files:
+
+        # save position and orientation
+        positions[file] = slicer.dicomDatabase.fileValue(file,self.tags['position'])
+        if positions[file] == "":
+          positions[file] = None
+        orientations[file] = slicer.dicomDatabase.fileValue(file,self.tags['orientation'])
+        if orientations[file] == "":
+          orientations[file] = None
+
+        # check for subseries values
+        for tag in subseriesTags:
+          value = slicer.dicomDatabase.fileValue(file,self.tags[tag])
+          if not subseriesValues.has_key(tag):
+            subseriesValues[tag] = []
+          if not subseriesValues[tag].__contains__(value):
+            subseriesValues[tag].append(value)
+          if not subseriesFiles.has_key((tag,value)):
+            subseriesFiles[tag,value] = []
+          subseriesFiles[tag,value].append(file)
+
+      # Pixel data is available, so add the default loadable to the output
+      newLoadables.append(loadable)
       
-      
-    for loadable in cachedLoadables:
-      if loadable.selected:
-        dataset = dicom.read_file(loadable.files[0])
-        seriesInstanceUID = dataset.SeriesInstanceUID
-        print seriesInstanceUID
-        firstUID = ('.').join(uids[0].split('.')[:-1])
-        print ('.').join(uids[0].split('.')[:-1])
-        if firstUID == seriesInstanceUID:
-          print "TRUE"
-          files.append(loadable.files)
+    for loadable in newLoadables:
+      #
+      # use the first file to get the ImageOrientationPatient for the
+      # series and calculate the scan direction (assumed to be perpendicular
+      # to the acquisition plane)
+      #
+      value = slicer.dicomDatabase.fileValue(loadable.files[0], self.tags['numberOfFrames'])
+      if value != "":
+        loadable.warning = "Multi-frame image. If slice orientation or spacing is non-uniform then the image may be displayed incorrectly. Use with caution."
+
+      validGeometry = True
+      ref = {}
+      for tag in [self.tags['position'], self.tags['orientation']]:
+        value = slicer.dicomDatabase.fileValue(loadable.files[0], tag)
+        if not value or value == "":
+          loadable.warning = "Reference image in series does not contain geometry information.  Please use caution."
+          validGeometry = False
+          loadable.confidence = 0.2
           break
-        
-    return files
-   
+        ref[tag] = value
+
+      if not validGeometry:
+        continue
+
+      # get the geometry of the scan
+      # with respect to an arbitrary slice
+      sliceAxes = [float(zz) for zz in ref[self.tags['orientation']].split('\\')]
+      x = sliceAxes[:3]
+      y = sliceAxes[3:]
+      scanAxis = self.cross(x,y)
+      scanOrigin = [float(zz) for zz in ref[self.tags['position']].split('\\')]
+
+      #
+      # for each file in series, calculate the distance along
+      # the scan axis, sort files by this
+      #
+      sortList = []
+      missingGeometry = False
+      for file in loadable.files:
+        if not positions[file]:
+          missingGeometry = True
+          break
+        position = [float(zz) for zz in positions[file].split('\\')]
+        vec = self.difference(position, scanOrigin)
+        dist = self.dot(vec, scanAxis)
+        sortList.append((file, dist))
+
+      if missingGeometry:
+        loadable.warning = "One or more images is missing geometry information"
+      else:
+        sortedFiles = sorted(sortList, key=lambda x: x[1])
+        distances = {}
+        loadable.files = []
+        for file,dist in sortedFiles:
+          loadable.files.append(file)
+          distances[file] = dist
+
+        #
+        # confirm equal spacing between slices
+        # - use variable 'epsilon' to determine the tolerance
+        #
+        spaceWarnings = 0
+        if len(loadable.files) > 1:
+          file0 = loadable.files[0]
+          file1 = loadable.files[1]
+          dist0 = distances[file0]
+          dist1 = distances[file1]
+          spacing0 = dist1 - dist0
+          n = 1
+          for fileN in loadable.files[1:]:
+            fileNminus1 = loadable.files[n-1]
+            distN = distances[fileN]
+            distNminus1 = distances[fileNminus1]
+            spacingN = distN - distNminus1
+            spaceError = spacingN - spacing0
+            if abs(spaceError) > self.epsilon:
+              spaceWarnings += 1
+              loadable.warning = "Images are not equally spaced (a difference of %g in spacings was detected).  Slicer will load this series as if it had a spacing of %g.  Please use caution." % (spaceError, spacing0)
+              break
+            n += 1
+
+        if spaceWarnings != 0:
+          print("Geometric issues were found with %d of the series.  Please use caution." % spaceWarnings)
+
+    return newLoadables
+
+  #
+  # math utilities for processing dicom volumes
+  # TODO: there must be good replacements for these
+  #
+  def cross(self, x, y):
+    return [x[1] * y[2] - x[2] * y[1],
+            x[2] * y[0] - x[0] * y[2],
+            x[0] * y[1] - x[1] * y[0]]
+
+  def difference(self, x, y):
+    return [x[0] - y[0], x[1] - y[1], x[2] - y[2]]
+
+  def dot(self, x, y):
+    return x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
+  
   def convertStudyDate(self, fileList):
     """Return a readable study date string """
     studyDate = self.__getSeriesInformation(fileList, self.tags['studyDate'])
@@ -336,7 +394,9 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
     
     # Determine the conversion factor
-    parameters = {}
+    conversionFactor = loadable.slope
+    factorType = (loadable.name).replace(' ','_')
+    """parameters = {}
     parameters['PETDICOMPath'] = seriesDirectory
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
@@ -356,34 +416,34 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       conversionFactor = SUVFactorCalculator.GetParameterDefault(1,17)
       factorType = 'SUV(ibw)'
     else:
-      conversionFactor = 1
+      conversionFactor = 1"""
     
-    #print "  conversionFactor " + str(conversionFactor)
+    print "  conversionFactor " + str(conversionFactor)
     # Create volume node
-    petNode = self.scalarVolumePlugin.load(loadable)
+    imageNode = self.scalarVolumePlugin.load(loadable)
     multiplier = vtk.vtkImageMathematics()
     multiplier.SetOperationToMultiplyByK()
     multiplier.SetConstantK(float(conversionFactor))
-    multiplier.SetInput1(petNode.GetImageData())
+    multiplier.SetInput1Data(imageNode.GetImageData())
     multiplier.Update()
-    petNode.GetImageData().DeepCopy(multiplier.GetOutput())
+    imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
     
     volumeLogic = slicer.modules.volumes.logic()
     appLogic = slicer.app.applicationLogic()
     selNode = appLogic.GetSelectionNode()
-    selNode.SetReferenceActiveVolumeID(petNode.GetID())
+    selNode.SetReferenceActiveVolumeID(imageNode.GetID())
     appLogic.PropagateVolumeSelection()
     
     # Change display
-    displayNode = petNode.GetVolumeDisplayNode()
+    displayNode = imageNode.GetVolumeDisplayNode()
     displayNode.SetInterpolate(0)
-    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+    #displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
     
     # Change name
     patientID = self.__getSeriesInformation(loadable.files, self.tags['patientID'])
     studyDate = self.convertStudyDate(loadable.files)
-    name = patientID + '_' + studyDate + ' ' + factorType
-    petNode.SetName(name)
+    name = patientID + '_' + studyDate + '_' + factorType
+    imageNode.SetName(name)
     
     # Set Attributes
     patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
@@ -392,14 +452,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
     patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
     
-    petNode.SetAttribute('DICOM.PatientID', patientID)  
-    petNode.SetAttribute('DICOM.PatientName', patientName)
-    petNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
-    petNode.SetAttribute('DICOM.PatientSex', patientSex)
-    petNode.SetAttribute('DICOM.PatientHeight', patientHeight)
-    petNode.SetAttribute('DICOM.PatientWeight', patientWeight)
+    imageNode.SetAttribute('DICOM.PatientID', patientID)  
+    imageNode.SetAttribute('DICOM.PatientName', patientName)
+    imageNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
+    imageNode.SetAttribute('DICOM.PatientSex', patientSex)
+    imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
+    imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
     
-    return petNode
+    return imageNode
     
     """imageSeriesAndFiles = self.__seperateFilesListIntoImageSeries(loadable.files) 
     studiesAndImageSeries = self.__seperateImageSeriesAndFilesIntoStudies(imageSeriesAndFiles)
