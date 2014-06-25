@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.7)
 
 #-----------------------------------------------------------------------------
 if(NOT Slicer_SOURCE_DIR)
-  set(EXTENSION_NAME DICOMRWVMPlugin)
+  set(MODULE_NAME DICOMRWVMPlugin)
 endif()
 
 #-----------------------------------------------------------------------------
