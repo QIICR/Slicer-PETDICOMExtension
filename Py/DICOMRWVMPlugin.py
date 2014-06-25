@@ -96,13 +96,64 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     
     loadables = []
     rwvList = []
+    seriesUIDs = []
+    filesByUID = {} # indexed dictionary by uid 
+    for fileList in fileLists:
+      for dcmFile in fileList:
+        if os.path.isfile(dcmFile):
+          dicomFile = dicom.read_file(dcmFile)
+          if dicomFile.Modality != "RWV":
+          #if self.__getSeriesInformation(fileList, self.tags['seriesModality']) != "RWV":
+            #print dicomFile.SeriesInstanceUID
+            #seriesUIDs.append(dicomFile.SeriesInstanceUID)
+            seriesUIDs.append(dicomFile.SOPInstanceUID)
+            #filesByUID.append(fileList)
+            filesByUID[dicomFile.SOPInstanceUID] = fileList
+            #print self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
+            #seriesUIDs.append(self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID']))
     
     for fileList in fileLists:
       #ds = dicom.read_file(fileList)
       #if ds.Modality == "RWV":
-      if self.__getSeriesInformation(fileList, self.tags['seriesModality']) == "RWV":
-        print "  Modality is RWV"
-        print fileList[0]
+      #if self.__getSeriesInformation(fileList, self.tags['seriesModality']) == "RWV":
+      if os.path.isfile(fileList[0]):
+        dicomFile = dicom.read_file(fileList[0])
+        if dicomFile.Modality == "RWV":
+          print "  Modality is RWV"
+          # Create loadables from the first file
+          dicomFile = dicom.read_file(fileList[0])
+          refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
+          if refRWVMSeq:
+            # Get the Series UID
+            for item in refRWVMSeq:
+              uid = self.getSeriesUIDFromRWVM(item)
+              print "UID: " + uid
+              if uid in seriesUIDs:
+                print "UID " + uid + " is a loadable series"
+                rwvLoadable = DICOMLib.DICOMLoadable()
+                rwvmSeq = item.RealWorldValueMappingSequence
+                maps = []
+                for mapper in rwvmSeq[0]:
+                  maps.append(mapper)
+                
+                units = maps[2].value
+                lastValueMapped = maps[3].value
+                firstValueMapped = maps[4].value
+                intercept = maps[5].value
+                slope = maps[6].value
+                unitMeanings = []
+                for unitMeaning in maps[1][0]:
+                  unitMeanings.append(unitMeaning)
+                rwvLoadable.name = unitMeanings[2].value       
+                rwvLoadable.tooltip = unitMeanings[2].value
+                rwvLoadable.confidence = 0.99
+                rwvLoadable.slope = slope
+                #rwvLoadable.files = self.getReferencedSeriesFilesFromUID(seriesUIDs,uid)
+                rwvLoadable.files = filesByUID[uid]
+                #print "  SLOPE: " + str(rwvLoadable.slope)
+                loadables += [rwvLoadable]
+        
+        """print fileList[0]
         cachedLoadables = self.getCachedLoadables(fileList)
         
         if not cachedLoadables:
@@ -112,11 +163,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
         for ldbl in cachedLoadables:
           if ldbl.selected:
-            print "  ldbl.selected"
             dataset = dicom.read_file(ldbl.files[0])
             refRWVMSeq = dataset.ReferencedImageRealWorldValueMappingSequence            
             if refRWVMSeq:
               for item in refRWVMSeq:
+                uids = self.getSeriesUIDsFromRWVM(item)
+                files = self.getReferencedSeriesFilesFromUIDs(cachedLoadables,uids)
                 rwvLoadable = DICOMLib.DICOMLoadable()
                 rwvmSeq = item.RealWorldValueMappingSequence
                 maps = []
@@ -135,21 +187,21 @@ class DICOMRWVMPluginClass(DICOMPlugin):
                 rwvLoadable.tooltip = unitMeanings[2]
                 rwvLoadable.confidence = 0.99
                 rwvLoadable.slope = slope
-                #print "  SLOPE: " + str(slope)
+                #print "  SLOPE: " + str(rwvLoadable.slope)
                 loadables += [rwvLoadable]
               
               #rwvList.append(rwvLoadable)
               #loadables += [rwvLoadable]
-            """if self.hasPatientWeight(fileList):
+            if self.hasPatientWeight(fileList):
               bwLoadable.files += ldbl.files
               if self.hasPatientHeight(fileList):
                 bsaLoadable.files += ldbl.files
                 if self.hasPatientSex(fileList):
                   ibwLoadable.files += ldbl.files
                   lbmLoadable.files += ldbl.files"""
-        self.cacheLoadables(ldbl.files, [ldbl])
-        break
-      
+        #self.cacheLoadables(ldbl.files, [ldbl])
+        #break
+  
     """if bwLoadable.files:
       loadables += [bwLoadable]
     if bsaLoadable.files:
@@ -161,9 +213,36 @@ class DICOMRWVMPluginClass(DICOMPlugin):
              
     return loadables
 
-  def getSeriesFilesFromRWVM(self, dataset):
-    """Return the series files related to this RWVM object """
-    # TODO
+  def getSeriesUIDFromRWVM(self, refImageSeq):
+    """Return the series UID related to this RWVM object """
+    imageSeq = refImageSeq.ReferencedImageSequence
+    instanceUID = (imageSeq[0])[0x0008,0x1155].value
+    #for item in imageSeq:
+      #uids.append(item[0x0008,0x1155].value)
+    #return uids
+    return instanceUID
+    #uid = ('.').join(instanceUID.split('.')[:-1])
+    #return uid
+    
+  def getReferencedSeriesFilesFromUID(self,seriesUIDs,uids):
+    """Return the series files related to a UID"""
+    files = []
+    #if uid in seriesUIDs:
+      
+      
+    for loadable in cachedLoadables:
+      if loadable.selected:
+        dataset = dicom.read_file(loadable.files[0])
+        seriesInstanceUID = dataset.SeriesInstanceUID
+        print seriesInstanceUID
+        firstUID = ('.').join(uids[0].split('.')[:-1])
+        print ('.').join(uids[0].split('.')[:-1])
+        if firstUID == seriesInstanceUID:
+          print "TRUE"
+          files.append(loadable.files)
+          break
+        
+    return files
    
   def convertStudyDate(self, fileList):
     """Return a readable study date string """
