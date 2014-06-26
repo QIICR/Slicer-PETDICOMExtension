@@ -1687,6 +1687,9 @@ bool ExportRWV(std::string inputDir,
   DcmTime::getCurrentTime(contentTime);
   rwvDataset->putAndInsertString(DCM_ContentDate, contentDate.c_str());
   rwvDataset->putAndInsertString(DCM_ContentTime, contentTime.c_str());
+  rwvDataset->putAndInsertString(DCM_SeriesDate, contentDate.c_str());
+  rwvDataset->putAndInsertString(DCM_SeriesTime, contentTime.c_str());
+  rwvDataset->putAndInsertString(DCM_SeriesDescription, "PET SUV factors");
 
   for(unsigned int measurementId=0;measurementId<measurementUnitsList.size();measurementId++){
     DcmItem *referencedImageRWVSeqItem, *rwvSeqItem;//, *rwvUnits;
