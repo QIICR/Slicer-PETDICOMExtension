@@ -35,7 +35,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     
     self.tags['contentTime'] = "0008,0033"
     self.tags['seriesTime'] = "0008,0031" 
-    self.tags['contentTime'] = "0008,0033"
     self.tags['triggerTime'] = "0018,1060"
     self.tags['diffusionGradientOrientation'] = "0018,9089"
     self.tags['imageOrientationPatient'] = "0020,0037"
@@ -67,6 +66,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     #self.patientSex = ""
 
     self.scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
+    #self.filesByUID = {} # indexed dictionary by uid 
   
   
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
@@ -83,8 +83,46 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     corresponding to ways of interpreting the
     fileLists parameter.
     """
+    
     loadables = []
-    filesByUID = {} # indexed dictionary by uid 
+    scalarVolumeLoadables = []
+    for fileList in fileLists:
+      scalarVolumeLoadables.extend(self.scalarVolumePlugin.examineFiles(fileList))
+      
+    for loadable in scalarVolumeLoadables:
+      dicomFile = dicom.read_file(loadable.files[0])
+      if dicomFile.Modality == "RWV":
+        refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
+        if refRWVMSeq:
+          # May have more than one RWVM value
+          for item in refRWVMSeq:
+            rwvLoadable = DICOMLib.DICOMLoadable()
+            # Get the referenced files from the database
+            refSeq = item.ReferencedImageSequence
+            instanceFiles = []
+            for instance in refSeq:
+              uid = instance.ReferencedSOPInstanceUID
+              if uid:
+                instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
+            # Get the Real World Values
+            rwvLoadable.files = instanceFiles
+            rwvmSeq = item.RealWorldValueMappingSequence
+            rwvLoadable.name = rwvmSeq[0].LUTExplanation
+            rwvLoadable.tooltip = rwvmSeq[0].LUTExplanation
+            rwvLoadable.confidence = 0.99
+            rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
+            loadables.append(rwvLoadable)
+        
+        
+    """if not self.filesByUID:
+      for fileList in fileLists:
+        if os.path.isfile(fileList[0]):
+          dicomFile = dicom.read_file(fileList[0])
+          if dicomFile.Modality == "RWV":
+            self.filesByUID = self.organizeFilesByUID(fileLists)
+            break # only needed once"""
+    
+    """filesByUID = {}
     for fileList in fileLists:
       if os.path.isfile(fileList[0]):
         dicomFile = dicom.read_file(fileList[0])
@@ -103,7 +141,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             # Get the Series UID
             for item in refRWVMSeq:
               uid = self.getSeriesUIDFromRWVM(item)
-              #if uid in seriesUIDs:
+              #if uid in self.filesByUID.keys():
               if uid in filesByUID.keys():
                 rwvLoadable = DICOMLib.DICOMLoadable()
                 rwvmSeq = item.RealWorldValueMappingSequence
@@ -124,9 +162,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
                 rwvLoadable.confidence = 0.99
                 rwvLoadable.slope = slope
                 rwvLoadable.files = filesByUID[uid]
+                #rwvLoadable.files = self.filesByUID[uid]
                 loadables += [rwvLoadable]
     
-    loadables = self.prepareLoadableFiles(loadables)         
+    loadables = self.prepareLoadableFiles(loadables)"""  
     return loadables
 
   def getSeriesUIDFromRWVM(self, refImageSeq):
@@ -138,7 +177,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
   def organizeFilesByUID(self, fileLists):
     """Return a dictionary with UID/seriesFiles pairs """
     filesByUID = {}
-    for fileList in fileLists:
+    """for fileList in fileLists:
       for dcmFile in fileList:
         if os.path.isfile(dcmFile):
           dicomFile = dicom.read_file(dcmFile)
@@ -147,20 +186,39 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             if uid in filesByUID:
               continue
             else:
-              filesByUID[uid] = fileList
-    """for dcmFile in slicer.dicomDatabase.allFiles():
+              filesByUID[uid] = fileList"""
+    for dcmFile in slicer.dicomDatabase.allFiles():
       if os.path.isfile(dcmFile):
         dicomFile = dicom.read_file(dcmFile)
         if dicomFile.Modality != "RWV":
           uid = dicomFile.SOPInstanceUID
+          seriesUID = dicomFile.SeriesInstanceUID
           if uid in filesByUID:
             continue
           else:
-            filesByUID[uid] = fileList"""
+            #filesByUID[uid] = dcmFile
+            filesByUID[uid] = slicer.dicomDatabase.filesForSeries(seriesUID)
 
     return filesByUID
     
   def prepareLoadableFiles(self, loadables):
+    """Check and modify the list of loadables before loading
+    Modified from DICOMScalarVolumePlugin::examineFiles
+    """
+ 
+    newLoadables = []
+    """sortList = []
+    for loadable in loadables:
+      for file in loadable.files:
+        sortList.append(file)
+      sortedFiles = sorted(sortList, key=lambda x: x[1])
+      loadable.files = []
+      for file in sortedFiles:
+        loadable.files.append(file)
+      newLoadables.append(loadable)
+    return newLoadables"""
+      
+    
     subseriesTags = [
         "seriesInstanceUID",
         "contentTime",
@@ -179,8 +237,8 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # position and orientation for later use
       positions = {}
       orientations = {}
-      subseriesFiles = {}
-      subseriesValues = {}
+      #subseriesFiles = {}
+      #subseriesValues = {}
       for file in loadable.files:
 
         # save position and orientation
@@ -191,7 +249,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         if orientations[file] == "":
           orientations[file] = None
 
-        # check for subseries values
+        """# check for subseries values
         for tag in subseriesTags:
           value = slicer.dicomDatabase.fileValue(file,self.tags[tag])
           if not subseriesValues.has_key(tag):
@@ -200,7 +258,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             subseriesValues[tag].append(value)
           if not subseriesFiles.has_key((tag,value)):
             subseriesFiles[tag,value] = []
-          subseriesFiles[tag,value].append(file)
+          subseriesFiles[tag,value].append(file)"""
 
       # Pixel data is available, so add the default loadable to the output
       newLoadables.append(loadable)
@@ -211,6 +269,27 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # series and calculate the scan direction (assumed to be perpendicular
       # to the acquisition plane)
       #
+      """for f in loadable.files:
+        value = slicer.dicomDatabase.fileValue(f, self.tags['numberOfFrames'])
+        if value != "":
+          loadable.warning = "Multi-frame image. If slice orientation or spacing is non-uniform then the image may be displayed incorrectly. Use with caution."
+
+        validGeometry = True
+        ref = {}
+        for tag in [self.tags['position'], self.tags['orientation']]:
+          value = slicer.dicomDatabase.fileValue(f, tag)
+          if not value or value == "":
+            loadable.warning = "Reference image in series does not contain geometry information.  Please use caution."
+            validGeometry = False
+            loadable.confidence = 0.2
+          else:
+            loadable.warning = ""
+            validGeometry = True
+            loadable.confidence = 0.99
+            break
+          ref[tag] = value"""
+
+        
       value = slicer.dicomDatabase.fileValue(loadable.files[0], self.tags['numberOfFrames'])
       if value != "":
         loadable.warning = "Multi-frame image. If slice orientation or spacing is non-uniform then the image may be displayed incorrectly. Use with caution."
@@ -240,13 +319,29 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       #
       # for each file in series, calculate the distance along
       # the scan axis, sort files by this
-      #
+      # TODO figure out why one of the RWMVs is not loading correctly!
       sortList = []
       missingGeometry = False
       for file in loadable.files:
-        if not positions[file]:
+        """try:
+          if not positions[file]:
+            missingGeometry = True
+            break
+        except KeyError:
+          print "positions does not have key " + file
+          missingGeometry = True
+          break"""
+        if not positions.has_key(file):
+          print "positions does not have key " + file
           missingGeometry = True
           break
+        else:
+          print "positions does not have key " + file
+          missingGeometry = True
+          break
+        #if not positions[file]:
+        #  missingGeometry = True
+        #  break
         position = [float(zz) for zz in positions[file].split('\\')]
         vec = self.difference(position, scanOrigin)
         dist = self.dot(vec, scanAxis)
