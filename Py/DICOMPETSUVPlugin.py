@@ -77,40 +77,19 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
     f = slicer.dicomDatabase.fileForInstance(sopInstanceUID)
     return os.path.dirname(f)  
+    
 
   def __getSeriesInformation(self,seriesFiles,dicomTag):
     if seriesFiles:
       return  slicer.dicomDatabase.fileValue(seriesFiles[0],dicomTag)          
 
-  #def __scanForRealWorldValueMappingObject(self,fileLists):
-
-  def __scanForValidPETSeries(self,fileLists):
-    
-    #petStudies = set()
-    
-    petSeriesList = []
-    
-    for fileList in fileLists:
-    
-      studyUID = self.__getSeriesInformation(fileList, self.tags['studyInstanceUID'])
-      modality = self.__getSeriesInformation(fileList, self.tags['seriesModality'])  
-    
-      if modality == self.petTerm:
-        #petStudies.add(studyUID)
-        petSeriesList.append(studyUID)
-            
-    #for stdUID in petStudies:
-      #petSeries.append(stdUID)       
-    print "  Found "+ str(len(petSeriesList)) +" PET series"
-    return petSeriesList
-       
 
   def examine(self,fileLists):
     """ Returns a list of DICOMLoadable instances
     corresponding to ways of interpreting the
     fileLists parameter.
     """
-    print "DICOMPETSUVPlugin::examine()"
+    #print "DICOMPETSUVPlugin::examine()"
     
     loadables = []
     scalarVolumeLoadables = []
@@ -127,6 +106,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     loadables.extend(rwvLoadables)
     
     # Remove any loadables that are not PET or have a RWVM loadable
+    # TODO is this not removing ones with an RWVM? TODO
     for loadable in scalarVolumeLoadables:
       dicomFile = dicom.read_file(loadable.files[0])
       if dicomFile.Modality == "PT":
@@ -166,7 +146,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
       rwvLoadable.files = [rwvFile]
       newLoadables.append(rwvLoadable)
       
-      #TODO add to DICOM Browser!  Else an RWMV will be genereated each time
+      #TODO add to DICOM Browser!  Else an RWMV will be genereated each time TODO
       #self.addRWMVToDatabase(rwvFile)
     
     return newLoadables
@@ -176,59 +156,25 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     destinationDir = os.path.dirname(slicer.dicomDatabase.databaseFilename)
     indexer.addFile( slicer.dicomDatabase, rwvFile, destinationDir )
     slicer.util.showStatusMessage("Loaded: %s" % rwvFile, 1000)
-    
-    """newLoadables = []  
-    for loadable in loadables:
-      bwLoadable = DICOMLib.DICOMLoadable()
-      bwLoadable.name = " PET SUV(bw) Image"
-      bwLoadable.tooltip = "PET Standardized Uptake Value (body weight) Image"
-      bwLoadable.confidence = 0.99
-      bsaLoadable = DICOMLib.DICOMLoadable()
-      bsaLoadable.name = " PET SUV(bsa) Image"
-      bsaLoadable.tooltip = "PET Standardized Uptake Value (body surface area) Image"
-      bwLoadable.confidence = 0.85
-      ibwLoadable = DICOMLib.DICOMLoadable()
-      ibwLoadable.name = " PET SUV(ibw) Image"
-      ibwLoadable.tooltip = "PET Standardized Uptake Value (ideal body weight) Image"
-      bwLoadable.confidence = 0.85
-      lbmLoadable = DICOMLib.DICOMLoadable()
-      lbmLoadable.name = " PET SUV(lbm) Image"
-      lbmLoadable.tooltip = "PET Standardized Uptake Value (lean body mass) Image"
-      bwLoadable.confidence = 0.85
-      
-      if self.hasPatientWeight(loadable.files):
-        bwLoadable.files += loadable.files
-        if self.hasPatientHeight(loadable.files):
-          bsaLoadable.files += loadable.files
-          if self.hasPatientSex(loadable.files):
-            ibwLoadable.files += loadable.files
-            lbmLoadable.files += loadable.files
-            
-    if bwLoadable.files:
-      newLoadables += [bwLoadable]
-    if bsaLoadable.files:
-      newLoadables += [bsaLoadable]
-    if ibwLoadable.files:
-      newLoadables += [ibwLoadable]
-    if lbmLoadable.files:
-      newLoadables += [lbmLoadable]
-      
-    return newLoadables"""
+
 
   def hasPatientWeight(self, fileList):
     """Check for valid PatientWeight tag"""
     pw = self.__getSeriesInformation(fileList, self.tags['patientWeight'])
     return ((pw is not None) and (float(pw) > 0))
     
+    
   def hasPatientHeight(self, fileList):
     """Check for valid PatientHeight tag"""
     ph = self.__getSeriesInformation(fileList, self.tags['patientHeight'])
     return ((ph is not None) and (float(ph) > 0))
     
+    
   def hasPatientSex(self, fileList):
     """Check for valid PatientSex tag"""
     ps = self.__getSeriesInformation(fileList, self.tags['patientSex'])
     return ((ps is not None) and (ps=="M" or ps=="F"))
+    
     
   def convertStudyDate(self, fileList):
     """Return a readable study date string """
@@ -240,80 +186,10 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
            
 
   def load(self,loadable):
-    """Determine the correct conversion factor
-    and load the volume into Slicer
-    """
-    
+    """Call the DICOMRWVMPlugin to load
+    the series into Slicer
+    """    
     return self.rwvPlugin.load(loadable)
-    
-    """sopInstanceUID = self.__getSeriesInformation(loadable.files, self.tags['sopInstanceUID'])
-    seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
-    
-    # Determine the conversion factor
-    parameters = {}
-    parameters['PETDICOMPath'] = seriesDirectory
-    SUVFactorCalculator = None
-    SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
-    
-    conversionFactor = 0
-    factorType = ''
-    if loadable.name == " PET SUV(bw) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,14)
-      factorType = 'SUV(bw)'
-    elif loadable.name == " PET SUV(lbm) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,15)
-      factorType = 'SUV(lbm)'
-    elif loadable.name == " PET SUV(bsa) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,16)
-      factorType = 'SUV(bsa)'
-    elif loadable.name == " PET SUV(ibw) Image":
-      conversionFactor = SUVFactorCalculator.GetParameterDefault(1,17)
-      factorType = 'SUV(ibw)'
-    else:
-      conversionFactor = 1
-    
-    #print "  conversionFactor " + str(conversionFactor)
-    # Create volume node
-    petNode = self.scalarVolumePlugin.load(loadable)
-    multiplier = vtk.vtkImageMathematics()
-    multiplier.SetOperationToMultiplyByK()
-    multiplier.SetConstantK(float(conversionFactor))
-    multiplier.SetInput1(petNode.GetImageData())
-    multiplier.Update()
-    petNode.GetImageData().DeepCopy(multiplier.GetOutput())
-    
-    volumeLogic = slicer.modules.volumes.logic()
-    appLogic = slicer.app.applicationLogic()
-    selNode = appLogic.GetSelectionNode()
-    selNode.SetReferenceActiveVolumeID(petNode.GetID())
-    appLogic.PropagateVolumeSelection()
-    
-    # Change display
-    displayNode = petNode.GetVolumeDisplayNode()
-    displayNode.SetInterpolate(0)
-    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
-    
-    # Change name
-    patientID = self.__getSeriesInformation(loadable.files, self.tags['patientID'])
-    studyDate = self.convertStudyDate(loadable.files)
-    name = patientID + '_' + studyDate + ' ' + factorType
-    petNode.SetName(name)
-    
-    # Set Attributes
-    patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
-    patientBirthDate = self.__getSeriesInformation(loadable.files, self.tags['patientBirthDate'])
-    patientSex = self.__getSeriesInformation(loadable.files, self.tags['patientSex'])
-    patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
-    patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
-    
-    petNode.SetAttribute('DICOM.PatientID', patientID)  
-    petNode.SetAttribute('DICOM.PatientName', patientName)
-    petNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
-    petNode.SetAttribute('DICOM.PatientSex', patientSex)
-    petNode.SetAttribute('DICOM.PatientHeight', patientHeight)
-    petNode.SetAttribute('DICOM.PatientWeight', patientWeight)
-    
-    return petNode"""
       
 
 class PETCTSeriesSelectorDialog(object):
