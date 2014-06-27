@@ -89,18 +89,28 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     for fileList in fileLists:
       scalarVolumeLoadables.extend(self.scalarVolumePlugin.examineFiles(fileList))
       
-    for loadable in scalarVolumeLoadables:
+    loadables = self.examineLoadables(scalarVolumeLoadables)
+    return loadables
+
+  
+  def examineLoadables(self, loadables):
+    """ Returns a new list of DICOMLoadable instances
+    that are associated with RWVM objects.
+    """
+    newLoadables = []
+    for loadable in loadables:
       dicomFile = dicom.read_file(loadable.files[0])
       if dicomFile.Modality == "RWV":
         refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
+        refSeriesSeq = dicomFile.ReferencedSeriesSequence
         if refRWVMSeq:
           # May have more than one RWVM value
           for item in refRWVMSeq:
             rwvLoadable = DICOMLib.DICOMLoadable()
             # Get the referenced files from the database
-            refSeq = item.ReferencedImageSequence
+            refImageSeq = item.ReferencedImageSequence
             instanceFiles = []
-            for instance in refSeq:
+            for instance in refImageSeq:
               uid = instance.ReferencedSOPInstanceUID
               if uid:
                 instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
@@ -112,10 +122,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             rwvLoadable.tooltip = rwvmSeq[0].LUTExplanation
             rwvLoadable.confidence = 0.99
             rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
-            loadables.append(rwvLoadable)
-
-    return loadables
-
+            rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
+            newLoadables.append(rwvLoadable)
+            
+    return newLoadables
+  
   
   def convertStudyDate(self, fileList):
     """Return a readable study date string """
