@@ -20,6 +20,7 @@
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
     </directory>
   </parameters>
+  <!--
   <parameters>
     <label>Output Images</label>
     <description><![CDATA[Output Images]]></description>
@@ -52,6 +53,7 @@
       <longflag>SUVibw</longflag>
     </image>
   </parameters>
+  -->
   <parameters>
     <label>Output</label>
     <description><![CDATA[output]]></description>
@@ -172,6 +174,12 @@
       <label>SUVibw Conversion Factor</label>
       <channel>output</channel>
       <description><![CDATA[Standardized Uptake Value (ideal body weight) Conversion Factor]]></description>
+    </string>
+    <string>
+      <name>RWVMFile</name>
+      <label>RWVM File</label>
+      <channel>output</channel>
+      <description><![CDATA[Real World Value Mapping object file]]></description>
     </string>
   </parameters>
 </executable>
