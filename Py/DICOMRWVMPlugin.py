@@ -118,9 +118,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             # Get the Real World Values
             rwvLoadable.files = instanceFiles
             rwvmSeq = item.RealWorldValueMappingSequence
-            rwvLoadable.name = rwvmSeq[0].LUTExplanation
-            rwvLoadable.tooltip = rwvmSeq[0].LUTExplanation
-            rwvLoadable.confidence = 0.99
+            unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
+            rwvLoadable.name = unitsSeq[0].CodeMeaning
+            rwvLoadable.tooltip = unitsSeq[0].CodeMeaning
+            rwvLoadable.units = unitsSeq[0].CodeValue
+            rwvLoadable.confidence = 0.95
             rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
             rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
             newLoadables.append(rwvLoadable)
@@ -183,6 +185,8 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     imageNode.SetAttribute('DICOM.PatientSex', patientSex)
     imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
     imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
+    imageNode.SetAttribute('VolumeType',loadable.name)
+    imageNode.SetAttribute('PixelUnits',loadable.units)
     
     return imageNode
           
