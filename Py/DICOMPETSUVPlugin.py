@@ -103,10 +103,14 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
       if dicomFile.Modality == "RWV":
         rwvLoadables = self.rwvPlugin.examineLoadables(scalarVolumeLoadables)
         break # only needed once
-    loadables.extend(rwvLoadables)
+    for loadable in rwvLoadables:
+      loadable.confidence = 1.0
+      if loadable.name == "Standardized Uptake Value body weight":
+        loadable.selected = True
+    if rwvLoadables:
+      loadables.extend(rwvLoadables)
     
     # Remove any loadables that are not PET or have a RWVM loadable
-    # TODO is this not removing ones with an RWVM? TODO
     for loadable in scalarVolumeLoadables:
       dicomFile = dicom.read_file(loadable.files[0])
       if dicomFile.Modality == "PT":
@@ -120,8 +124,20 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
       
     # Call SUV Factor Calculator module on remaining PET loadables
     petLoadables = self.generateRWVM(scalarVolumeLoadables)
-    loadables.extend(self.rwvPlugin.examineLoadables(petLoadables))
+    print ''
+    print '                               petLoadables: ' + str(len(scalarVolumeLoadables))
+    newRWVLoadables = self.rwvPlugin.examineLoadables(petLoadables)
+    print '                            newRWVLoadables: ' + str(len(scalarVolumeLoadables))
+    print ''
+    for loadable in newRWVLoadables:
+      loadable.confidence = 1.0
+      if loadable.name == "Standardized Uptake Value body weight":
+        loadable.selected = True
+    if newRWVLoadables:
+      loadables.extend(newRWVLoadables)
     
+    #loadables.extend(self.rwvPlugin.examineLoadables(petLoadables))
+    print '                           total returned loadables: ' + str(len(loadables))
     return loadables
     
   def generateRWVM(self, loadables):
@@ -130,52 +146,29 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     """
     newLoadables = []
     for loadable in loadables:
-      # Call SUV Factor Calculator module
-      sopInstanceUID = self.__getSeriesInformation(loadable.files, self.tags['sopInstanceUID'])
-      seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
-      
-      parameters = {}
-      parameters['PETDICOMPath'] = seriesDirectory
-      parameters['RWVDICOMPath'] = seriesDirectory
-      SUVFactorCalculator = None
-      SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
-      
-      rwvFile = SUVFactorCalculator.GetParameterDefault(2,19)
-      # Create new loadable for this rwvFile
-      rwvLoadable = DICOMLib.DICOMLoadable()
-      rwvLoadable.files = [rwvFile]
-      newLoadables.append(rwvLoadable)
-      
-      #TODO add to DICOM Browser!  Else an RWMV will be genereated each time TODO
-      #self.addRWMVToDatabase(rwvFile)
+      dicomFile = dicom.read_file(loadable.files[0])
+      if dicomFile.Modality == "PT":
+        # Call SUV Factor Calculator module
+        sopInstanceUID = self.__getSeriesInformation(loadable.files, self.tags['sopInstanceUID'])
+        seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
+        
+        parameters = {}
+        parameters['PETDICOMPath'] = seriesDirectory
+        parameters['RWVDICOMPath'] = seriesDirectory
+        SUVFactorCalculator = None
+        SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
+        
+        rwvFile = SUVFactorCalculator.GetParameterDefault(1,19)
+        # Create new loadable for this rwvFile
+        rwvLoadable = DICOMLib.DICOMLoadable()
+        rwvLoadable.files = [rwvFile]
+        newLoadables.append(rwvLoadable)
+
+        slicer.dicomDatabase.insert(rwvFile,False,False,False,os.path.dirname(rwvFile))
     
     return newLoadables
     
-  def addRWMVToDatabase(self, rwvFile):
-    indexer = ctk.ctkDICOMIndexer()
-    destinationDir = os.path.dirname(slicer.dicomDatabase.databaseFilename)
-    indexer.addFile( slicer.dicomDatabase, rwvFile, destinationDir )
-    slicer.util.showStatusMessage("Loaded: %s" % rwvFile, 1000)
-
-
-  def hasPatientWeight(self, fileList):
-    """Check for valid PatientWeight tag"""
-    pw = self.__getSeriesInformation(fileList, self.tags['patientWeight'])
-    return ((pw is not None) and (float(pw) > 0))
-    
-    
-  def hasPatientHeight(self, fileList):
-    """Check for valid PatientHeight tag"""
-    ph = self.__getSeriesInformation(fileList, self.tags['patientHeight'])
-    return ((ph is not None) and (float(ph) > 0))
-    
-    
-  def hasPatientSex(self, fileList):
-    """Check for valid PatientSex tag"""
-    ps = self.__getSeriesInformation(fileList, self.tags['patientSex'])
-    return ((ps is not None) and (ps=="M" or ps=="F"))
-    
-    
+       
   def convertStudyDate(self, fileList):
     """Return a readable study date string """
     studyDate = self.__getSeriesInformation(fileList, self.tags['studyDate'])
