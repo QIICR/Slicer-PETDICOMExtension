@@ -117,12 +117,17 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             instanceFiles.sort()
             # Get the Real World Values
             rwvLoadable.files = instanceFiles
+            rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
+            rwvLoadable.studyDate = self.convertStudyDate(rwvLoadable.files)
             rwvmSeq = item.RealWorldValueMappingSequence
             unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
-            rwvLoadable.name = unitsSeq[0].CodeMeaning
-            rwvLoadable.tooltip = unitsSeq[0].CodeMeaning
+            rwvLoadable.name = rwvLoadable.patientID + ' ' + rwvLoadable.studyDate + ' ' + unitsSeq[0].CodeMeaning
+            rwvLoadable.tooltip = rwvLoadable.name
+            
+            
+            rwvLoadable.unitName = unitsSeq[0].CodeMeaning
             rwvLoadable.units = unitsSeq[0].CodeValue
-            rwvLoadable.confidence = 0.95
+            rwvLoadable.confidence = 0.90
             rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
             rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
             newLoadables.append(rwvLoadable)
@@ -145,7 +150,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
 
     conversionFactor = loadable.slope
-    factorType = (loadable.name).replace(' ','_')
 
     # Create volume node
     imageNode = self.scalarVolumePlugin.load(loadable)
@@ -167,9 +171,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     displayNode.SetInterpolate(0)
     
     # Change name
-    patientID = self.__getSeriesInformation(loadable.files, self.tags['patientID'])
-    studyDate = self.convertStudyDate(loadable.files)
-    name = patientID.replace(' ','_') + '_' + studyDate + '_' + factorType
+    name = (loadable.name).replace(' ','_')
     imageNode.SetName(name)
     
     # Set Attributes
@@ -179,13 +181,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
     patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
     
-    imageNode.SetAttribute('DICOM.PatientID', patientID)  
+    imageNode.SetAttribute('DICOM.PatientID', loadable.patientID)  
     imageNode.SetAttribute('DICOM.PatientName', patientName)
     imageNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
     imageNode.SetAttribute('DICOM.PatientSex', patientSex)
     imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
     imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
-    imageNode.SetAttribute('VolumeType',loadable.name)
+    imageNode.SetAttribute('DICOM.StudyDate', loadable.studyDate)
+    imageNode.SetAttribute('VolumeType',loadable.unitName)
     imageNode.SetAttribute('PixelUnits',loadable.units)
     
     return imageNode
