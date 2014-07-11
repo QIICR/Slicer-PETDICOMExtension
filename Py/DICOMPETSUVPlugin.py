@@ -104,7 +104,8 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
         break # only needed once
     for loadable in rwvLoadables:
       loadable.confidence = 1.0
-      if loadable.name == "Standardized Uptake Value body weight":
+      #if loadable.name == "Standardized Uptake Value body weight":
+      if "Standardized Uptake Value body weight" in loadable.name:
         loadable.selected = True
     if rwvLoadables:
       loadables.extend(rwvLoadables)
@@ -127,7 +128,8 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
       newRWVLoadables = self.rwvPlugin.examineLoadables(petLoadables)
       for loadable in newRWVLoadables:
         loadable.confidence = 1.0
-        if loadable.name == "Standardized Uptake Value body weight":
+        #if loadable.name == "Standardized Uptake Value body weight":
+        if "Standardized Uptake Value body weight" in loadable.name:
           loadable.selected = True
       if newRWVLoadables:
         loadables.extend(newRWVLoadables)
