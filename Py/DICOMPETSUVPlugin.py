@@ -23,7 +23,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     super(DICOMPETSUVPluginClass,self).__init__()
     
     #print "DICOMPETSUVPlugin __init__()"
-    self.loadType = "PET SUV Volume"
+    self.loadType = "PET SUV Plugin"
     self.tags['patientID'] = "0010,0020"
     self.tags['patientName'] = "0010,0010"
     self.tags['patientBirthDate'] = "0010,0030"
@@ -89,7 +89,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     corresponding to ways of interpreting the
     fileLists parameter.
     """
-    #print "DICOMPETSUVPlugin::examine()"
     
     loadables = []
     scalarVolumeLoadables = []
@@ -111,7 +110,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
       loadables.extend(rwvLoadables)
     
     # Remove any loadables that are not PET or have a RWVM loadable
-    for loadable in scalarVolumeLoadables:
+    for loadable in scalarVolumeLoadables[:]:
       dicomFile = dicom.read_file(loadable.files[0])
       if dicomFile.Modality == "PT":
         for rwvLoadable in rwvLoadables:
@@ -123,22 +122,18 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
           scalarVolumeLoadables.remove(loadable)
       
     # Call SUV Factor Calculator module on remaining PET loadables
-    petLoadables = self.generateRWVM(scalarVolumeLoadables)
-    print ''
-    print '                               petLoadables: ' + str(len(scalarVolumeLoadables))
-    newRWVLoadables = self.rwvPlugin.examineLoadables(petLoadables)
-    print '                            newRWVLoadables: ' + str(len(scalarVolumeLoadables))
-    print ''
-    for loadable in newRWVLoadables:
-      loadable.confidence = 1.0
-      if loadable.name == "Standardized Uptake Value body weight":
-        loadable.selected = True
-    if newRWVLoadables:
-      loadables.extend(newRWVLoadables)
-    
-    #loadables.extend(self.rwvPlugin.examineLoadables(petLoadables))
-    print '                           total returned loadables: ' + str(len(loadables))
+    if len(scalarVolumeLoadables) > 0:
+      petLoadables = self.generateRWVM(scalarVolumeLoadables)
+      newRWVLoadables = self.rwvPlugin.examineLoadables(petLoadables)
+      for loadable in newRWVLoadables:
+        loadable.confidence = 1.0
+        if loadable.name == "Standardized Uptake Value body weight":
+          loadable.selected = True
+      if newRWVLoadables:
+        loadables.extend(newRWVLoadables)
+
     return loadables
+    
     
   def generateRWVM(self, loadables):
     """Return a new list of loadables after generating Real World Value Mapping
@@ -159,12 +154,14 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
         SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
         
         rwvFile = SUVFactorCalculator.GetParameterDefault(1,19)
+        #FIXME this insert() seems to halt the examine() method, so the Examine button must be used
+        # again with the RWVM object also selected. Need to find a workaround for this.
+        slicer.dicomDatabase.insert(rwvFile,False,False,False,os.path.dirname(rwvFile))
+        
         # Create new loadable for this rwvFile
         rwvLoadable = DICOMLib.DICOMLoadable()
         rwvLoadable.files = [rwvFile]
         newLoadables.append(rwvLoadable)
-
-        slicer.dicomDatabase.insert(rwvFile,False,False,False,os.path.dirname(rwvFile))
     
     return newLoadables
     
@@ -183,61 +180,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     the series into Slicer
     """    
     return self.rwvPlugin.load(loadable)
-      
 
-class PETCTSeriesSelectorDialog(object):
-  
-  def __init__(self, parent=None, studyDescription="",petDescriptions=[],ctDescriptions=[],petSelection=0,ctSelection=0):
-    
-    self.studyDescription = studyDescription
-    self.petDescriptions = petDescriptions
-    self.ctDescriptions = ctDescriptions  
-    self.petSelection = petSelection
-    self.ctSelection = ctSelection
-    
-    if not parent:
-      self.parent = qt.QDialog()
-      self.parent.setModal(True)
-      self.parent.setLayout(qt.QGridLayout())
-      self.layout = self.parent.layout()
-      self.setup()
-      self.parent.show()
-      
-    else:
-      self.parent = parent
-      self.layout = parent.layout() 
-      
-  
-  def setup(self):
-      
-    self.studyLabel = qt.QLabel(self.studyDescription)
-    self.studyLabel.setAlignment(qt.Qt.AlignCenter)
-    self.petLabel = qt.QLabel("PET Image Series")
-    self.petLabel.setAlignment(qt.Qt.AlignCenter)
-    self.ctLabel = qt.QLabel("CT Image Series")
-    self.ctLabel.setAlignment(qt.Qt.AlignCenter)
-    self.petList = qt.QListWidget()
-    self.petList.addItems(self.petDescriptions)
-    self.petList.setCurrentRow(self.petSelection)
-    self.ctList = qt.QListWidget()
-    self.ctList.addItems(self.ctDescriptions)
-    self.ctList.setCurrentRow(self.ctSelection)
-    self.button = qt.QPushButton("Ok")
-    
-    self.layout.addWidget(self.studyLabel,0,0,1,2)
-    self.layout.addWidget(self.petLabel,1,0,1,1)
-    self.layout.addWidget(self.ctLabel,1,1,1,1)
-    self.layout.addWidget(self.petList,2,0,1,1)
-    self.layout.addWidget(self.ctList,2,1,1,1)
-    self.layout.addWidget(self.button,3,0,1,2)
-    
-    self.button.connect('clicked()',self.parent.close)    
-      
-
-  def getSelectedSeries(self):
-    return [self.petList.currentRow, self.ctList.currentRow]              
-          
-          
   
 #
 # DICOMPETSUVPlugin
