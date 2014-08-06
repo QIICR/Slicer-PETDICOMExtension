@@ -85,14 +85,20 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     """
     
     loadables = []
-    scalarVolumeLoadables = []
+    # get from cache or create new loadables
     for fileList in fileLists:
-      scalarVolumeLoadables.extend(self.scalarVolumePlugin.examineFiles(fileList))
-      
-    loadables = self.examineLoadables(scalarVolumeLoadables)
+      cachedLoadables = self.getCachedLoadables(fileList)
+      if cachedLoadables:
+        loadables += cachedLoadables
+      else:
+        if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "RWV":
+          loadablesForFiles = self.getLoadablesFromRWVMFile(fileList)
+          loadables += loadablesForFiles
+          self.cacheLoadables(fileList,loadablesForFiles)
+
     return loadables
 
-  
+  #TODO change so this takes a list of fileLists to reduce overhead (will need to change PET plugin too)
   def examineLoadables(self, loadables):
     """ Returns a new list of DICOMLoadable instances
     that are associated with RWVM objects.
@@ -123,14 +129,54 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
             rwvLoadable.name = rwvLoadable.patientID + ' ' + rwvLoadable.studyDate + ' ' + unitsSeq[0].CodeMeaning
             rwvLoadable.tooltip = rwvLoadable.name
-            
-            
+
             rwvLoadable.unitName = unitsSeq[0].CodeMeaning
             rwvLoadable.units = unitsSeq[0].CodeValue
             rwvLoadable.confidence = 0.90
             rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
             rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
+            rwvLoadable.derivedItems = loadable.files
             newLoadables.append(rwvLoadable)
+            
+    return newLoadables
+    
+  def getLoadablesFromRWVMFile(self, fileList):
+    """ Returns DICOMLoadable instances associated with an RWVM object."""
+    
+    newLoadables = []
+    dicomFile = dicom.read_file(fileList[0])
+    if dicomFile.Modality == "RWV":
+      refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
+      refSeriesSeq = dicomFile.ReferencedSeriesSequence
+      if refRWVMSeq:
+        # May have more than one RWVM value, create loadables for each
+        for item in refRWVMSeq:
+          rwvLoadable = DICOMLib.DICOMLoadable()
+          # Get the referenced files from the database
+          refImageSeq = item.ReferencedImageSequence
+          instanceFiles = []
+          for instance in refImageSeq:
+            uid = instance.ReferencedSOPInstanceUID
+            if uid:
+              instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
+          instanceFiles.sort()
+          # Get the Real World Values
+          rwvLoadable.files = instanceFiles
+          rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
+          rwvLoadable.studyDate = self.convertStudyDate(rwvLoadable.files)
+          rwvmSeq = item.RealWorldValueMappingSequence
+          unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
+          rwvLoadable.name = rwvLoadable.patientID + ' ' + rwvLoadable.studyDate + ' ' + unitsSeq[0].CodeMeaning
+          rwvLoadable.tooltip = rwvLoadable.name
+          
+          
+          rwvLoadable.unitName = unitsSeq[0].CodeMeaning
+          rwvLoadable.units = unitsSeq[0].CodeValue
+          rwvLoadable.confidence = 0.90
+          rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
+          rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
+          rwvLoadable.derivedItems = fileList
+          newLoadables.append(rwvLoadable)
             
     return newLoadables
   
@@ -188,8 +234,8 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
     imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
     imageNode.SetAttribute('DICOM.StudyDate', loadable.studyDate)
-    imageNode.SetAttribute('VolumeType',loadable.unitName)
-    imageNode.SetAttribute('PixelUnits',loadable.units)
+    imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
+    imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
     
     return imageNode
           
