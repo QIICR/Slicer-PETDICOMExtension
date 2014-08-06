@@ -98,47 +98,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
     return loadables
 
-  #TODO change so this takes a list of fileLists to reduce overhead (will need to change PET plugin too)
-  def examineLoadables(self, loadables):
-    """ Returns a new list of DICOMLoadable instances
-    that are associated with RWVM objects.
-    """
-    newLoadables = []
-    for loadable in loadables:
-      dicomFile = dicom.read_file(loadable.files[0])
-      if dicomFile.Modality == "RWV":
-        refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
-        refSeriesSeq = dicomFile.ReferencedSeriesSequence
-        if refRWVMSeq:
-          # May have more than one RWVM value
-          for item in refRWVMSeq:
-            rwvLoadable = DICOMLib.DICOMLoadable()
-            # Get the referenced files from the database
-            refImageSeq = item.ReferencedImageSequence
-            instanceFiles = []
-            for instance in refImageSeq:
-              uid = instance.ReferencedSOPInstanceUID
-              if uid:
-                instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
-            instanceFiles.sort()
-            # Get the Real World Values
-            rwvLoadable.files = instanceFiles
-            rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
-            rwvLoadable.studyDate = self.convertStudyDate(rwvLoadable.files)
-            rwvmSeq = item.RealWorldValueMappingSequence
-            unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
-            rwvLoadable.name = rwvLoadable.patientID + ' ' + rwvLoadable.studyDate + ' ' + unitsSeq[0].CodeMeaning
-            rwvLoadable.tooltip = rwvLoadable.name
-
-            rwvLoadable.unitName = unitsSeq[0].CodeMeaning
-            rwvLoadable.units = unitsSeq[0].CodeValue
-            rwvLoadable.confidence = 0.90
-            rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
-            rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
-            rwvLoadable.derivedItems = loadable.files
-            newLoadables.append(rwvLoadable)
-            
-    return newLoadables
     
   def getLoadablesFromRWVMFile(self, fileList):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
@@ -172,7 +131,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           
           rwvLoadable.unitName = unitsSeq[0].CodeMeaning
           rwvLoadable.units = unitsSeq[0].CodeValue
-          rwvLoadable.confidence = 0.90
+          rwvLoadable.confidence = 0.85
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
           rwvLoadable.derivedItems = fileList
