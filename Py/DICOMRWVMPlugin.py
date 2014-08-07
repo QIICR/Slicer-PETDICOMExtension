@@ -5,7 +5,6 @@ from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
 
-
 import DICOMLib
 
 import math as math
@@ -58,15 +57,8 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['pixelData'] = "7fe0,0010"
 
     self.tags['referencedImageRWVMappingSeq'] = "0040,9094"
- 
-    
-    #self.fileLists = []
-    #self.patientName = ""
-    #self.patientBirthDate = ""
-    #self.patientSex = ""
 
     self.scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
-    #self.filesByUID = {} # indexed dictionary by uid 
   
   
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
@@ -118,7 +110,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
             uid = instance.ReferencedSOPInstanceUID
             if uid:
               instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
-          instanceFiles.sort()
           # Get the Real World Values
           rwvLoadable.files = instanceFiles
           rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
@@ -135,7 +126,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
           rwvLoadable.derivedItems = fileList
-          newLoadables.append(rwvLoadable)
+          newLoadables.append(self.sortLoadableSeriesFiles(rwvLoadable))
             
     return newLoadables
   
@@ -147,55 +138,121 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       if len(studyDate)==8:
         studyDate = studyDate[:4] + '-' + studyDate[4:6] + '-' + studyDate[6:]
     return studyDate
+    
+    
+  def sortLoadableSeriesFiles(self, loadable):
+    """Sort the series files based on distance along the scan axis
+       Modified from DICOMScalarVolumePlugin """
+    positions = {}
+    orientations = {}
+    for dicomFile in loadable.files:
+      positions[dicomFile] = slicer.dicomDatabase.fileValue(dicomFile,self.tags['position'])
+      if positions[dicomFile] == "":
+        positions[dicomFile] = None
+      orientations[dicomFile] = slicer.dicomDatabase.fileValue(dicomFile,self.tags['orientation'])
+      if orientations[dicomFile] == "":
+        orientations[dicomFile] = None
+          
+    ref = {}
+    for tag in [self.tags['position'], self.tags['orientation']]:
+      value = slicer.dicomDatabase.fileValue(loadable.files[0], tag)
+      if not value or value == "":
+        loadable.warning = "Reference image in series does not contain geometry information.  Please use caution."
+        validGeometry = False
+        loadable.confidence = 0.2
+        break
+      ref[tag] = value
+          
+    sliceAxes = [float(zz) for zz in ref[self.tags['orientation']].split('\\')]
+    x = sliceAxes[:3]
+    y = sliceAxes[3:]
+    scanAxis = self.scalarVolumePlugin.cross(x,y)
+    scanOrigin = [float(zz) for zz in ref[self.tags['position']].split('\\')]
+     
+    sortList = []
+    missingGeometry = False
+    for dicomFile in loadable.files:
+      if not positions[dicomFile]:
+        missingGeometry = True
+        break
+      position = [float(zz) for zz in positions[dicomFile].split('\\')]
+      vec = self.scalarVolumePlugin.difference(position, scanOrigin)
+      dist = self.scalarVolumePlugin.dot(vec, scanAxis)
+      sortList.append((dicomFile, dist))
+
+    if missingGeometry:
+      loadable.warning = "One or more images is missing geometry information"
+    else:
+      sortedFiles = sorted(sortList, key=lambda x: x[1])
+      distances = {}
+      loadable.files = []
+      for file,dist in sortedFiles:
+        loadable.files.append(file)
+        distances[file] = dist
+          
+    return loadable 
            
   
   def load(self,loadable):
     """Use the conversion factor to load the volume into Slicer"""
-    sopInstanceUID = self.__getSeriesInformation(loadable.files, self.tags['sopInstanceUID'])
-    seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
 
     conversionFactor = loadable.slope
 
     # Create volume node
-    imageNode = self.scalarVolumePlugin.load(loadable)
-    multiplier = vtk.vtkImageMathematics()
-    multiplier.SetOperationToMultiplyByK()
-    multiplier.SetConstantK(float(conversionFactor))
-    multiplier.SetInput1Data(imageNode.GetImageData())
-    multiplier.Update()
-    imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
+    imageNode = self.scalarVolumePlugin.loadFilesWithArchetype(loadable.files, loadable.name)
+    if imageNode:  
+      # apply the conversion factor
+      multiplier = vtk.vtkImageMathematics()
+      multiplier.SetOperationToMultiplyByK()
+      multiplier.SetConstantK(float(conversionFactor))
+      multiplier.SetInput1Data(imageNode.GetImageData())
+      multiplier.Update()
+      imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
+      # create Subject Hierarchy nodes for the loaded series
+      self.addSeriesInSubjectHierarchy(loadable,imageNode)
+      
+      # create list of DICOM instance UIDs corresponding to the loaded files
+      instanceUIDs = ""
+      for dicomFile in loadable.files:
+        uid = slicer.dicomDatabase.fileValue(dicomFile,self.tags['sopInstanceUID'])
+        if uid == "":
+          uid = "Unknown"
+        instanceUIDs += uid + " "
+      instanceUIDs = instanceUIDs[:-1]  # strip last space
+      
+      # Set Attributes
+      patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
+      patientBirthDate = self.__getSeriesInformation(loadable.files, self.tags['patientBirthDate'])
+      patientSex = self.__getSeriesInformation(loadable.files, self.tags['patientSex'])
+      patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
+      patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
+      
+      imageNode.SetAttribute('DICOM.PatientID', loadable.patientID)  
+      imageNode.SetAttribute('DICOM.PatientName', patientName)
+      imageNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
+      imageNode.SetAttribute('DICOM.PatientSex', patientSex)
+      imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
+      imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
+      imageNode.SetAttribute('DICOM.StudyDate', loadable.studyDate)
+      imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
+      imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
+      imageNode.SetAttribute("DICOM.instanceUIDs", instanceUIDs)
     
-    volumeLogic = slicer.modules.volumes.logic()
-    appLogic = slicer.app.applicationLogic()
-    selNode = appLogic.GetSelectionNode()
-    selNode.SetReferenceActiveVolumeID(imageNode.GetID())
-    appLogic.PropagateVolumeSelection()
-    
-    # Change display
-    displayNode = imageNode.GetVolumeDisplayNode()
-    displayNode.SetInterpolate(0)
-    
-    # Change name
-    name = (loadable.name).replace(' ','_')
-    imageNode.SetName(name)
-    
-    # Set Attributes
-    patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
-    patientBirthDate = self.__getSeriesInformation(loadable.files, self.tags['patientBirthDate'])
-    patientSex = self.__getSeriesInformation(loadable.files, self.tags['patientSex'])
-    patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
-    patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
-    
-    imageNode.SetAttribute('DICOM.PatientID', loadable.patientID)  
-    imageNode.SetAttribute('DICOM.PatientName', patientName)
-    imageNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
-    imageNode.SetAttribute('DICOM.PatientSex', patientSex)
-    imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
-    imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
-    imageNode.SetAttribute('DICOM.StudyDate', loadable.studyDate)
-    imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
-    imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
-    
+      # automatically select the volume to display
+      volumeLogic = slicer.modules.volumes.logic()
+      appLogic = slicer.app.applicationLogic()
+      selNode = appLogic.GetSelectionNode()
+      selNode.SetReferenceActiveVolumeID(imageNode.GetID())
+      appLogic.PropagateVolumeSelection()
+      
+      # Change display
+      displayNode = imageNode.GetVolumeDisplayNode()
+      displayNode.SetInterpolate(0)
+      
+      # Change name
+      name = (loadable.name).replace(' ','_')
+      imageNode.SetName(name)
+
     return imageNode
           
   
