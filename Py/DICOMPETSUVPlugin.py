@@ -75,8 +75,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     
     self.rwvmList = []
     self.rwvmListCreated = False
-    self.rwvmListModified = False
-    #self.rwvmReferencedUIDList = []
   
   
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
@@ -187,7 +185,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     """Call the DICOMRWVMPlugin to load
     the series into Slicer
     """    
-    print loadable.derivedItems
     return self.rwvPlugin.load(loadable)
 
   
