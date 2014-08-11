@@ -72,9 +72,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
 
     self.scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
     self.rwvPlugin = slicer.modules.dicomPlugins['DICOMRWVMPlugin']()
-    
-    self.rwvmList = []
-    self.rwvmListCreated = False
   
   
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
@@ -93,53 +90,39 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     fileLists parameter.
     """
     loadables = []
-    # generate the Real World Value Mapping object list
-    if not self.rwvmListCreated:
-      for dicomFile in slicer.dicomDatabase.allFiles():
-        if slicer.dicomDatabase.fileValue(dicomFile,self.tags['seriesModality']) == "RWV":
-          self.rwvmList.append(dicomFile)
-      self.rwvmListCreated = True
     
-    # get from cache or create new loadables using ScalarVolumePlugin
+    # get from cache or create new loadables
     for fileList in fileLists:
       cachedLoadables = self.getCachedLoadables(fileList)
       if cachedLoadables:
         loadables += cachedLoadables
       else:
-        modality = slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality'])
-        if modality == "PT":
+        if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "PT":
           # check if PET series already has Real World Value Mapping
           hasRWVM = False
-          dicomFile = dicom.read_file(fileList[0])
-          for rwvm in self.rwvmList:
-            if dicomFile.SeriesInstanceUID == self.getReferencedSeriesInstanceUID(rwvm):
-              hasRWVM = True
-              loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile([rwvm])
-              for loadable in loadablesForFiles:
-                loadable.confidence = 1.0
-                if "Standardized Uptake Value body weight" in loadable.name:
-                  loadable.selected = True
-              loadables += loadablesForFiles
-              self.cacheLoadables(fileList,loadablesForFiles)
-              break
+          ptFile = dicom.read_file(fileList[0])
+          studyUID = slicer.dicomDatabase.fileValue(fileList[0],self.tags['studyInstanceUID'])
+          for series in slicer.dicomDatabase.seriesForStudy(studyUID):
+            if ptFile.SeriesInstanceUID != series:
+              for seriesFile in slicer.dicomDatabase.filesForSeries(series):
+                if slicer.dicomDatabase.fileValue(seriesFile,self.tags['seriesModality']) == "RWV":
+                  if ptFile.SeriesInstanceUID == self.getReferencedSeriesInstanceUID(seriesFile):
+                    hasRWVM = True
+                    loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile([seriesFile])
+                    for loadable in loadablesForFiles:
+                      loadable.confidence = 1.0
+                      self.abbreviateLoadableName(loadable)
+                    loadables += loadablesForFiles
+                    self.cacheLoadables(fileList,loadablesForFiles)
           if not hasRWVM:
-            # Call SUV Factor Calculator to create RWVM loadables for this PET series
+            # Call SUV Factor Calculator to create RWVM files for this PET series
             rwvmFile = self.generateRWVMforFileList(fileList)
             loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile([rwvmFile])
             for loadable in loadablesForFiles:
-              loadable.confidence = 1.0
-              if "Standardized Uptake Value body weight" in loadable.name:
-                loadable.selected = True
+              loadable.confidence = 0.95
+              self.abbreviateLoadableName(loadable)
             loadables += loadablesForFiles
             self.cacheLoadables(fileList,loadablesForFiles)
-        elif modality == "RWV":
-          # ignore...DICOMRWVMPlugin should catch these
-          """# Create loadables but with a lower confidence
-          loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile(fileList)
-          for loadable in loadablesForFiles:
-            loadable.confidence = 0.95
-          loadables += loadablesForFiles
-          self.cacheLoadables(fileList,loadablesForFiles)"""
 
     return loadables
     
@@ -160,7 +143,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
     
     rwvFile = SUVFactorCalculator.GetParameterDefault(1,19)
-    self.rwvmList.append(rwvFile)
 
     return rwvFile
 
@@ -170,21 +152,27 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     dicomFile = dicom.read_file(rwvmFile)
     refSeriesSeq = dicomFile.ReferencedSeriesSequence
     return refSeriesSeq[0].SeriesInstanceUID
-  
-       
-  def convertStudyDate(self, fileList):
-    """Return a readable study date string """
-    studyDate = self.__getSeriesInformation(fileList, self.tags['studyDate'])
-    if studyDate:
-      if len(studyDate)==8:
-        studyDate = studyDate[:4] + '-' + studyDate[4:6] + '-' + studyDate[6:]
-    return studyDate
-           
+   
+   
+  def abbreviateLoadableName(self, loadable):
+    """Helper method to shorten the name of the SUV conversion """
+    
+    if "Standardized Uptake Value body weight" in loadable.name:
+      loadable.name = (loadable.name).replace('Standardized Uptake Value body weight','(SUVbw)')
+      loadable.selected = True
+    elif "Standardized Uptake Value ideal body weight" in loadable.name:
+      loadable.name = (loadable.name).replace('Standardized Uptake Value ideal body weight','(SUVibw)')
+    elif "Standardized Uptake Value lean body mass" in loadable.name:
+      loadable.name = (loadable.name).replace('Standardized Uptake Value lean body mass','(SUVlbm)')
+    elif "Standardized Uptake Value body surface area" in loadable.name:
+      loadable.name = (loadable.name).replace('Standardized Uptake Value body surface area','(SUVbsa)')
+    return
+    
 
   def load(self,loadable):
     """Call the DICOMRWVMPlugin to load
     the series into Slicer
-    """    
+    """   
     return self.rwvPlugin.load(loadable)
 
   
