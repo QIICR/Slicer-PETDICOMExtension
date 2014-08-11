@@ -75,7 +75,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     corresponding to ways of interpreting the
     fileLists parameter.
     """
-    
     loadables = []
     # get from cache or create new loadables
     for fileList in fileLists:
@@ -113,16 +112,16 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           # Get the Real World Values
           rwvLoadable.files = instanceFiles
           rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
-          rwvLoadable.studyDate = self.convertStudyDate(rwvLoadable.files)
+          rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
           rwvmSeq = item.RealWorldValueMappingSequence
           unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
-          rwvLoadable.name = rwvLoadable.patientID + ' ' + rwvLoadable.studyDate + ' ' + unitsSeq[0].CodeMeaning
+          rwvLoadable.name = rwvLoadable.patientID + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
           
           
           rwvLoadable.unitName = unitsSeq[0].CodeMeaning
           rwvLoadable.units = unitsSeq[0].CodeValue
-          rwvLoadable.confidence = 0.85
+          rwvLoadable.confidence = 0.90
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
           rwvLoadable.derivedItems = fileList
@@ -131,12 +130,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     return newLoadables
   
   
-  def convertStudyDate(self, fileList):
+  def convertStudyDate(self, studyDate):
     """Return a readable study date string """
-    studyDate = self.__getSeriesInformation(fileList, self.tags['studyDate'])
-    if studyDate:
-      if len(studyDate)==8:
-        studyDate = studyDate[:4] + '-' + studyDate[4:6] + '-' + studyDate[6:]
+    if len(studyDate)==8:
+      studyDate = studyDate[:4] + '-' + studyDate[4:6] + '-' + studyDate[6:]
     return studyDate
     
     
