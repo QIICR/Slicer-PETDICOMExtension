@@ -111,11 +111,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
               instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
           # Get the Real World Values
           rwvLoadable.files = instanceFiles
+          rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
           rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
           rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
           rwvmSeq = item.RealWorldValueMappingSequence
           unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
-          rwvLoadable.name = rwvLoadable.patientID + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
+          rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
           
           
