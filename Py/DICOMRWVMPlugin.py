@@ -218,6 +218,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         instanceUIDs += uid + " "
       instanceUIDs = instanceUIDs[:-1]  # strip last space
       
+      # get the instance UID for the RWVM object
+      derivedItemUID = ""
+      try:
+        derivedItemUID = slicer.dicomDatabase.fileValue(loadable.derivedItems[0],self.tags['sopInstanceUID'])
+      except AttributeError:
+        # no derived items
+        pass
+      
       # Set Attributes
       patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
       patientBirthDate = self.__getSeriesInformation(loadable.files, self.tags['patientBirthDate'])
@@ -235,6 +243,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
       imageNode.SetAttribute("DICOM.instanceUIDs", instanceUIDs)
+      imageNode.SetAttribute("DICOM.RealWorldValueMappingUID", derivedItemUID)
     
       # automatically select the volume to display
       volumeLogic = slicer.modules.volumes.logic()
@@ -266,7 +275,7 @@ class DICOMRWVMPlugin:
   def __init__(self, parent):
     parent.title = "DICOM Real World Value Mapping Plugin"
     parent.categories = ["Developer Tools.DICOM Plugins"]
-    parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Paul Mercea (Univ. of Heidelberg), Andrey Fedorov (BWH)"]
+    parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Andrey Fedorov (BWH)"]
     parent.helpText = """
     Plugin to the DICOM Module to parse and load DICOM series associated with 
     Real World Value Mapping objects. Provides options for standardized uptake values.
