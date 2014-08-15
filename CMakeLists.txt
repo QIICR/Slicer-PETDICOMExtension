@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 2.8.7)
 
-#-----------------------------------------------------------------------------
-if(NOT Slicer_SOURCE_DIR)
-  set(MODULE_NAME DICOMRWVMPlugin)
-endif()
+set(MODULE_NAME DICOMRWVMPlugin)
 
 #-----------------------------------------------------------------------------
 if(NOT Slicer_SOURCE_DIR)
@@ -14,7 +11,3 @@ endif()
 #-----------------------------------------------------------------------------
 add_subdirectory(Py)
 
-#-----------------------------------------------------------------------------
-if(NOT Slicer_SOURCE_DIR)
-  include(${Slicer_EXTENSION_CPACK})
-endif()
