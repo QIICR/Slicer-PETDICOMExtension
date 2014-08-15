@@ -1,33 +1,14 @@
-
-#SET(KIT_PYTHON_SCRIPTS
-#  qSlicerLongitudinalPETCTModuleWidget.py
-#  SlicerLongitudinalPETCTModuleViewHelper.py
-#  SlicerLongitudinalPETCTModuleSegmentationHelper.py
-#  DICOMLongitudinalPETCTPlugin.py
-#  )
-
-SET(KIT_PYTHON_RESOURCES
-  )
-
-#ctkMacroCompilePythonScript(
-#  TARGET_NAME qSlicerLongitudinalPETCTModuleWidget
-#  SCRIPTS "${KIT_PYTHON_SCRIPTS}"
-#  RESOURCES "${KIT_PYTHON_RESOURCES}"
-#  DESTINATION_DIR ${CMAKE_BINARY_DIR}/${Slicer_QTLOADABLEMODULES_PYTHON_LIB_DIR}
-#  INSTALL_DIR ${Slicer_INSTALL_QTLOADABLEMODULES_PYTHON_LIB_DIR}
-#  NO_INSTALL_SUBDIR
-#  )
-
-SET(KIT_PYTHON_SCRIPTS
+#-----------------------------------------------------------------------------
+set(MODULE_PYTHON_SCRIPTS
   DICOMPETSUVPlugin.py
   )
-  
-ctkMacroCompilePythonScript(
-  TARGET_NAME DICOMPETSUVPlugin
-  SCRIPTS "${KIT_PYTHON_SCRIPTS}"
-  RESOURCES "${KIT_PYTHON_RESOURCES}"
-  DESTINATION_DIR ${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}
-  INSTALL_DIR ${Slicer_INSTALL_QTSCRIPTEDMODULES_LIB_DIR}
-  NO_INSTALL_SUBDIR
+
+set(MODULE_PYTHON_RESOURCES
   )
-  
+
+#-----------------------------------------------------------------------------
+slicerMacroBuildScriptedModule(
+  NAME ${MODULE_NAME}
+  SCRIPTS ${MODULE_PYTHON_SCRIPTS}
+  RESOURCES ${MODULE_PYTHON_RESOURCES}
+  )
