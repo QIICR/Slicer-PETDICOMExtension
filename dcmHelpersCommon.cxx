@@ -193,22 +193,22 @@ void dcmHelpersCommon::copyElement(const DcmTagKey tag, DcmDataset *src, DcmData
 
 
 void dcmHelpersCommon::copyPatientModule(DcmDataset *src, DcmDataset *dest){
-  for(int i=0;i<sizeof(patientModuleTags)/sizeof(DcmTagKey);i++)
+  for(unsigned int i=0;i<sizeof(patientModuleTags)/sizeof(DcmTagKey);i++)
     dcmHelpersCommon::copyElement(patientModuleTags[i], src, dest);
 }
 
 void dcmHelpersCommon::copyPatientStudyModule(DcmDataset *src, DcmDataset *dest){
-  for(int i=0;i<sizeof(patientStudyModuleTags)/sizeof(DcmTagKey);i++)
+  for(unsigned int i=0;i<sizeof(patientStudyModuleTags)/sizeof(DcmTagKey);i++)
     dcmHelpersCommon::copyElement(patientStudyModuleTags[i], src, dest);
 }
 
 void dcmHelpersCommon::copyGeneralStudyModule(DcmDataset *src, DcmDataset *dest){
-  for(int i=0;i<sizeof(generalStudyModuleTags)/sizeof(DcmTagKey);i++)
+  for(unsigned int i=0;i<sizeof(generalStudyModuleTags)/sizeof(DcmTagKey);i++)
     dcmHelpersCommon::copyElement(generalStudyModuleTags[i], src, dest);
 }
 
 void dcmHelpersCommon::copyClinicalTrialSubjectModule(DcmDataset *src, DcmDataset *dest){
-  for(int i=0;i<sizeof(clinicalTrialSubjectModuleTags)/sizeof(DcmTagKey);i++)
+  for(unsigned int i=0;i<sizeof(clinicalTrialSubjectModuleTags)/sizeof(DcmTagKey);i++)
     dcmHelpersCommon::copyElement(clinicalTrialSubjectModuleTags[i], src, dest);
 }
 
@@ -316,7 +316,7 @@ void dcmHelpersCommon::addImageLibraryEntry(DSRDocument *doc, DcmDataset *imgDat
 
     std::string sopClassUID, sopInstanceUID;
     char* elementStr;
-    float* elementFloat;
+    //float* elementFloat;
     OFString elementOFString;
 
     imgDataset->findAndGetElement(DCM_SOPClassUID, element);
