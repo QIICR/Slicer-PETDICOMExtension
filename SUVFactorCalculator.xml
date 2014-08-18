@@ -6,8 +6,8 @@
   <version>0.1.0</version>
   <documentation-url>http://www.slicer.org/slicerWiki/index.php/Documentation/4.3/Modules/SUVFactorCalculator</documentation-url>
   <license/>
-  <contributor>Ethan Ulrich (University of Iowa), Markus Van Tol (University of Iowa), Hans Johnson (University of Iowa), Wendy Plesniak (SPL, BWH), Nicole Aucoin (SPL, BWH), Ron Kikinis (SPL, BWH)</contributor>
-  <acknowledgements><![CDATA[This work is funded by NIH National Cancer Institute grant U24 CA180918, the Harvard Catalyst, and the National Alliance for Medical Image Computing (NAMIC), funded by the National Institutes of Health through the NIH Roadmap for Medical Research, Grant U54 EB005149.]]></acknowledgements>
+  <contributor>Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL, BWH), Markus Van Tol (University of Iowa), Hans Johnson (University of Iowa), Wendy Plesniak (SPL, BWH), Nicole Aucoin (SPL, BWH), Ron Kikinis (SPL, BWH)</contributor>
+  <acknowledgements><![CDATA[This work is funded in part by NIH National Cancer Institute grant U24 CA180918, the Harvard Catalyst, and the National Alliance for Medical Image Computing (NAMIC), funded by the National Institutes of Health through the NIH Roadmap for Medical Research, Grant U54 EB005149.]]></acknowledgements>
   <parameters>
     <label>Input Image</label>
     <description><![CDATA[Input parameters]]></description>
@@ -20,9 +20,53 @@
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
     </directory>
   </parameters>
+  <!--
+  <parameters>
+    <label>Output Images</label>
+    <description><![CDATA[Output Images]]></description>
+    <image>
+      <name>SUVBWName</name>
+      <label>SUVbw Output Volume</label>
+      <description>Output volume image (SUV body weight)</description>
+      <channel>output</channel>
+      <longflag>SUVbw</longflag>
+    </image>
+    <image>
+      <name>SUVBSAName</name>
+      <label>SUVbsa Output Volume</label>
+      <description>Output volume image (SUV body surface area)</description>
+      <channel>output</channel>
+      <longflag>SUVbsa</longflag>
+    </image>
+    <image>
+      <name>SUVLBMName</name>
+      <label>SUVlbm Output Volume</label>
+      <description>Output volume image (SUV lean body mass)</description>
+      <channel>output</channel>
+      <longflag>SUVlbm</longflag>
+    </image>
+    <image>
+      <name>SUVIBWName</name>
+      <label>SUVibw Output Volume</label>
+      <description>Output volume image (SUV ideal body weight)</description>
+      <channel>output</channel>
+      <longflag>SUVibw</longflag>
+    </image>
+  </parameters>
+  -->
   <parameters>
     <label>Output</label>
     <description><![CDATA[output]]></description>
+    
+    <directory>
+      <name>RWVDICOMPath</name>
+      <label>RWV mapping object DICOM volume path</label>
+      <channel>output</channel>
+      <flag>-r</flag>
+      <longflag>--rwvmDICOMPath</longflag>
+      <description><![CDATA[Input path to a directory to store the RWV object with the SUV computation result]]></description>
+    </directory>
+
     <string>
       <name>radioactivityUnits</name>
       <label>Radioactivity Units</label>
@@ -130,6 +174,12 @@
       <label>SUVibw Conversion Factor</label>
       <channel>output</channel>
       <description><![CDATA[Standardized Uptake Value (ideal body weight) Conversion Factor]]></description>
+    </string>
+    <string>
+      <name>RWVMFile</name>
+      <label>RWVM File</label>
+      <channel>output</channel>
+      <description><![CDATA[Real World Value Mapping object file]]></description>
     </string>
   </parameters>
 </executable>

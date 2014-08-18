@@ -3,16 +3,37 @@
 
 // VTK includes
 #include <vtkGlobFileNames.h>
+#include <vtksys/Directory.hxx>
 
 // ITK includes
 #include <itkGDCMSeriesFileNames.h>
 #include <itkImageSeriesReader.h>
+#include <itkImageFileReader.h>
+#include <itkNrrdImageIO.h>
+#include <itkImageFileWriter.h>
+#include <itkImageRegionIterator.h>
+#include <itkImageDuplicator.h>
+#include "itkGDCMImageIO.h"
 
 
 #undef HAVE_SSTREAM
 #include "itkDCMTKFileReader.h"
 #include <iostream>
+#include <sstream>
 #include <math.h>
+
+// DCMTK includes
+#include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
+#include "dcmtk/ofstd/ofstream.h"
+#include "dcmtk/dcmdata/dcuid.h"
+#include "dcmtk/dcmdata/dcfilefo.h"
+#include "dcmtk/dcmsr/dsriodcc.h"
+#include "dcmtk/dcmsr/dsrdoc.h"
+
+// versioning info
+#include "vtkSUVFactorCalculatorVersionConfigure.h"
+
+#include "dcmHelpersCommon.h"
 
 // ...
 // ...............................................................................................
@@ -78,7 +99,7 @@ For Philips images, none of this applies, and the images are in COUNTS and the
 private tag (7053,1000) SUV Factor must be used.  To calculate the SUV of a
 particular pixel, you just have to calculate [pixel _value * tag 7053|1000 ]
 
-The tag 7053|1000 is a number (double) taking into account the patient's
+The tag 7053|1000 is a number (double) taking into account tn ihe patient's
 weight, the injection quantity.  We get the tag from the original file with:
 
 double suv;
@@ -100,6 +121,10 @@ namespace
 struct parameters
   {
     std::string PETDICOMPath;
+    //std::string SUVBWName;
+    //std::string SUVBSAName;
+    //std::string SUVLBMName;
+    //std::string SUVIBWName;
     std::string patientName;
     std::string studyDate;
     std::string radioactivityUnits;
@@ -120,6 +145,13 @@ struct parameters
     std::string returnParameterFile;
     
     std::string correctedImage;
+
+    double SUVbwConversionFactor;
+    double SUVlbmConversionFactor;
+    double SUVbsaConversionFactor;
+    double SUVibwConversionFactor;
+    
+    std::string RWVMFile;
 };
 
 // ...
@@ -735,10 +767,13 @@ double DecayCorrection(parameters & list, double injectedDose )
   double scanTimeSeconds = ConvertTimeToSeconds(list.seriesReferenceTime.c_str() );
   //double scanTimeSeconds = ConvertTimeToSeconds(list.seriesTime.c_str());
   double startTimeSeconds = ConvertTimeToSeconds( list.injectionTime.c_str() );
+  std::cout << "                  RAD. START TIME: " << startTimeSeconds << std::endl;
+  std::cout << "                  SERIES TIME: " << scanTimeSeconds << std::endl;
   //double startTimeSeconds = ConvertTimeToSeconds( list.radiopharmStartTime.c_str());
   double halfLife = atof( list.radionuclideHalfLife.c_str() );
   double decayTime = scanTimeSeconds - startTimeSeconds;
   double decayedDose = injectedDose * (double)pow(2.0, -(decayTime / halfLife) );
+  std::cout << "                  DECAYED DOSE: " << decayedDose << std::endl;
 
   return decayedDose;
 }
@@ -749,6 +784,9 @@ double DecayCorrection(parameters & list, double injectedDose )
 // ...
 int LoadImagesAndComputeSUV( parameters & list )
 {
+  typedef short PixelValueType;
+  typedef itk::Image< PixelValueType, 3 > VolumeType;
+  typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
   // read the DICOM dir to get the radiological data
   typedef itk::GDCMSeriesFileNames InputNamesGeneratorType;
 
@@ -1242,11 +1280,11 @@ int LoadImagesAndComputeSUV( parameters & list )
       return EXIT_FAILURE;
     }
 
-//TODO calculate SUV conversion factors
-  double SUVbwConversionFactor = 0.0;
-  double SUVlbmConversionFactor = 0.0;
-  double SUVbsaConversionFactor = 0.0;
-  double SUVibwConversionFactor = 0.0;
+
+  list.SUVbwConversionFactor = 0.0;
+  list.SUVlbmConversionFactor = 0.0;
+  list.SUVbsaConversionFactor = 0.0;
+  list.SUVibwConversionFactor = 0.0;
   if(list.correctedImage.compare("MODULE_INIT_NO_VALUE") != 0)
     {
       std::string correctedImage = list.correctedImage;
@@ -1261,6 +1299,7 @@ int LoadImagesAndComputeSUV( parameters & list )
               double weight = list.patientWeight;
               double height = list.patientHeight*100; //convert to centimeters
               double dose = list.injectedDose;
+         std::cout << "                  INJECTED DOSE: " << list.injectedDose << std::endl;
               if( dose == 0.0 )
                 {
                   std::cerr << "ComputeSUV: Got NULL dose!" << std::endl;
@@ -1285,7 +1324,7 @@ int LoadImagesAndComputeSUV( parameters & list )
               else
                 { //All values okay; perform calculation
                   //SUVbwConversionFactor = weight * tissueConversionFactor / decayedDose;
-                  SUVbwConversionFactor = weight / decayedDose;
+                  list.SUVbwConversionFactor = weight / decayedDose;
                   if(height != 0.0)
                     {
                       double leanBodyMass;    // kg
@@ -1294,48 +1333,59 @@ int LoadImagesAndComputeSUV( parameters & list )
                       
                       bodySurfaceArea = (pow(weight,0.425)*pow(height,0.725)*0.007184);
                       //SUVbsaConversionFactor = bodySurfaceArea*tissueConversionFactor / decayedDose;
-                      SUVbsaConversionFactor = bodySurfaceArea / decayedDose;
+                      list.SUVbsaConversionFactor = bodySurfaceArea / decayedDose;
                       if(list.patientSex=="M")
                         {
-                          leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
+                          //leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
+                          leanBodyMass = 1.10*weight - 128*(weight/height)*(weight/height);  //TODO verify this formula
                           //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
-                          SUVlbmConversionFactor = leanBodyMass / decayedDose;
+                          list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
                           
                           idealBodyMass = 48.0 + 1.06*(height - 152);
                           if(idealBodyMass > weight){ idealBodyMass = weight; };
                           //SUVibwConversionFactor = idealBodyMass*tissueConversionFactor / decayedDose;
-                          SUVibwConversionFactor = idealBodyMass / decayedDose;
+                          list.SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
                       if(list.patientSex=="F")
                         {
                           leanBodyMass = 1.07*weight - 148*(weight/height)*(weight/height);
                           //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
-                          SUVlbmConversionFactor = leanBodyMass / decayedDose;
+                          list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
                           
                           idealBodyMass = 45.5 + 0.91*(height - 152);
                           if(idealBodyMass > weight){ idealBodyMass = weight; };
                           //SUVibwConversionFactor = idealBodyMass*tissueConversionFactor / decayedDose;
-                          SUVibwConversionFactor = idealBodyMass / decayedDose;
+                          list.SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
+                    }
+                  else
+                    {
+                      std::cout << "Warning: No patient height detected.  Cannot determine SUVbsa, SUVlbm, and SUVibw conversion factors." << std::endl;
+                      //list.SUVbsaConversionFactor = NULL;
+                      //list.SUVlbmConversionFactor = NULL;
+                      //list.SUVibwConversionFactor = NULL;
                     }
                 }
             }
           else
             {
               std::cout << "Decay correction is not START." << std::endl;
+              return EXIT_FAILURE;
             }
         }
       else
         {
           std::cout << "No attenuation/decay correction detected." << std::endl;
+          return EXIT_FAILURE;
         }
     }
   else
     {
       std::cout << "No corrected image detected." << std::endl;
+      return EXIT_FAILURE;
     }
 
-  ofstream writeFile;
+  /*ofstream writeFile;
   writeFile.open( list.returnParameterFile.c_str() );
  
   writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
@@ -1353,18 +1403,198 @@ int LoadImagesAndComputeSUV( parameters & list )
   writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
   writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
   writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
-  writeFile << "SUVbwConversionFactor = " << SUVbwConversionFactor << std::endl;
-  writeFile << "SUVlbmConversionFactor = " << SUVlbmConversionFactor << std::endl;
-  writeFile << "SUVbsaConversionFactor = " << SUVbsaConversionFactor << std::endl;
-  writeFile << "SUVibwConversionFactor = " << SUVibwConversionFactor << std::endl;
+  writeFile << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
+  writeFile << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
+  writeFile << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
+  writeFile << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
 
-  writeFile.close();
+  writeFile.close();*/
+  
   return EXIT_SUCCESS;
 
 }
 
 
 } // end of anonymous namespace
+
+void InsertCodeSequence(DcmItem* item, const DcmTag tag, const DSRCodedEntryValue entry, int itemNum=0){
+
+  DcmItem *codeSequenceItem;
+
+  item->findOrCreateSequenceItem(tag, codeSequenceItem, itemNum);
+
+  codeSequenceItem->putAndInsertString(DCM_CodeValue, entry.getCodeValue().c_str());
+  codeSequenceItem->putAndInsertString(DCM_CodeMeaning, entry.getCodeMeaning().c_str());
+  codeSequenceItem->putAndInsertString(DCM_CodingSchemeDesignator, entry.getCodingSchemeDesignator().c_str());
+
+}
+
+bool ExportRWV(parameters & list, std::string inputDir,
+    std::vector<DSRCodedEntryValue> measurementUnitsList,
+    std::vector<std::string> measurementsList,
+    std::string outputDir){
+  vtksys::Directory dir;
+  dir.Load(inputDir.c_str());
+  unsigned int numFiles = dir.GetNumberOfFiles();
+  std::cout << numFiles << " files total" << std::endl;
+  DcmFileFormat fileFormat;
+  DcmDataset* petDataset;
+  std::vector<OFString> instanceUIDs;
+  for(unsigned int i=0;i<numFiles;i++){
+    if(fileFormat.loadFile((inputDir+"/"+dir.GetFile(i)).c_str()).bad()){
+      continue;
+    }
+
+    petDataset = fileFormat.getAndRemoveDataset();
+    OFString modality, instanceUID, classUID;
+    petDataset->findAndGetOFString(DCM_Modality, modality);
+    if(std::string("PT") != modality.c_str()){
+      continue;
+    }
+    petDataset->findAndGetOFString(DCM_SOPInstanceUID, instanceUID);
+    instanceUIDs.push_back(instanceUID);
+
+  }
+
+  DcmFileFormat rwvmFileFormat;
+  DcmDataset* rwvDataset = rwvmFileFormat.getDataset();
+  dcmHelpersCommon::copyPatientModule(petDataset, rwvDataset);
+  dcmHelpersCommon::copyClinicalTrialSubjectModule(petDataset, rwvDataset);
+  dcmHelpersCommon::copyGeneralStudyModule(petDataset, rwvDataset);
+  dcmHelpersCommon::copyPatientStudyModule(petDataset, rwvDataset);
+
+  char uid[128];
+
+  // Series Module
+  dcmGenerateUniqueIdentifier(uid);
+  rwvDataset->putAndInsertString(DCM_Modality,"RWV");
+  rwvDataset->putAndInsertString(DCM_SeriesInstanceUID, uid);
+  rwvDataset->putAndInsertString(DCM_SeriesNumber,"1000");
+
+  // SOP Common Module
+  dcmGenerateUniqueIdentifier(uid);
+  rwvDataset->putAndInsertString(DCM_SOPInstanceUID, uid);
+  if(rwvDataset->putAndInsertString(DCM_SOPClassUID, UID_RealWorldValueMappingStorage).bad()){
+      std::cout << "Failed to set class Uid" << std::endl;
+  }
+
+  // Referenced Series Sequence
+  DcmItem *referencedInstanceSeq;
+  OFString petSeriesInstanceUID;
+  petDataset->findAndGetOFString(DCM_SeriesInstanceUID, petSeriesInstanceUID);
+  rwvDataset->findOrCreateSequenceItem(DCM_ReferencedSeriesSequence, referencedInstanceSeq);
+  referencedInstanceSeq->putAndInsertString(DCM_SeriesInstanceUID, petSeriesInstanceUID.c_str());
+  for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
+    DcmItem* referencedSOPItem;
+    referencedInstanceSeq->findOrCreateSequenceItem(DCM_ReferencedInstanceSequence, referencedSOPItem, imageId);
+    referencedSOPItem->putAndInsertString(DCM_ReferencedSOPClassUID, UID_PositronEmissionTomographyImageStorage);
+    referencedSOPItem->putAndInsertString(DCM_ReferencedSOPInstanceUID, instanceUIDs[imageId].c_str());
+  }
+
+  // RWV Mapping Module
+  OFString contentDate, contentTime;
+  DcmDate::getCurrentDate(contentDate);
+  DcmTime::getCurrentTime(contentTime);
+  rwvDataset->putAndInsertString(DCM_ContentDate, contentDate.c_str());
+  rwvDataset->putAndInsertString(DCM_ContentTime, contentTime.c_str());
+  rwvDataset->putAndInsertString(DCM_SeriesDate, contentDate.c_str());
+  rwvDataset->putAndInsertString(DCM_SeriesTime, contentTime.c_str());
+  rwvDataset->putAndInsertString(DCM_SeriesDescription, "PET SUV factors");
+
+  for(unsigned int measurementId=0;measurementId<measurementUnitsList.size();measurementId++){
+    DcmItem *referencedImageRWVSeqItem, *rwvSeqItem;//, *rwvUnits;
+    rwvDataset->findOrCreateSequenceItem(DCM_ReferencedImageRealWorldValueMappingSequence,
+                                         referencedImageRWVSeqItem, measurementId);
+    referencedImageRWVSeqItem->findOrCreateSequenceItem(DCM_RealWorldValueMappingSequence, rwvSeqItem);
+    rwvSeqItem->putAndInsertString(DCM_LUTExplanation,measurementUnitsList[measurementId].getCodeMeaning().c_str());
+    rwvSeqItem->putAndInsertString(DCM_LUTLabel,measurementUnitsList[measurementId].getCodeValue().c_str());
+    rwvSeqItem->putAndInsertSint16(DCM_RealWorldValueFirstValueMapped,0);
+    rwvSeqItem->putAndInsertUint16(DCM_RealWorldValueLastValueMapped,10000);
+    rwvSeqItem->putAndInsertString(DCM_RealWorldValueIntercept,"0");
+    rwvSeqItem->putAndInsertString(DCM_RealWorldValueSlope, measurementsList[measurementId].c_str());
+
+    DSRCodedEntryValue measurement = measurementUnitsList[measurementId];
+    InsertCodeSequence(rwvSeqItem, DCM_MeasurementUnitsCodeSequence,
+                       DSRCodedEntryValue(measurement.getCodeValue().c_str(),
+                                          measurement.getCodingSchemeDesignator().c_str(),
+                                          measurement.getCodeMeaning().c_str()));
+
+    // private stuff, pending amendment of the standard
+    rwvSeqItem->putAndInsertString(DcmTag(0x0041,0x0010, EVR_LO),"PixelMed Publishing");
+    DcmItem *quantitySeqItem, *measurementMethodSeqItem;
+    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),quantitySeqItem).bad()){
+    //if(rwvSeqItem->findOrCreateSequenceItem(DCM_RealWorldValueMappingSequence,quantitySeqItem).bad()){
+      std::cerr << "Failed to add private sequence" << std::endl;
+    }
+    quantitySeqItem->putAndInsertString(DCM_ValueType,"CODE");
+    InsertCodeSequence(quantitySeqItem, DCM_ConceptNameCodeSequence,
+                       DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
+    InsertCodeSequence(quantitySeqItem, DCM_ConceptCodeSequence,
+                       DSRCodedEntryValue("250121","99PMP","Standardized Uptake Value"));
+
+    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),measurementMethodSeqItem, 1).bad()){
+      std::cerr << "Failed to add private sequence" << std::endl;
+    }
+    measurementMethodSeqItem->putAndInsertString(DCM_ValueType,"CODE");
+
+    if(measurement.getCodeValue() == "{SUVbw}g/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250132","99PMP","SUV body weight calculation method"));    
+    } else if(measurement.getCodeValue() == "{SUVlbm}g/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250133","99PMP","SUV lean body mass calculation method"));    
+    } else if(measurement.getCodeValue() == "{SUVbsa}cm2/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250134","99PMP","SUV body surface area calculation method"));    
+    } else if(measurement.getCodeValue() == "{SUVibw}g/ml"){
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
+                         DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
+      InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
+                         DSRCodedEntryValue("250135","99PMP","SUV ideal body weight calculation method"));    
+    };
+
+    for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
+      DcmItem* referencedSOPItem;
+      referencedImageRWVSeqItem->findOrCreateSequenceItem(DCM_ReferencedImageSequence, referencedSOPItem, imageId);
+      referencedSOPItem->putAndInsertString(DCM_ReferencedSOPClassUID, UID_PositronEmissionTomographyImageStorage);
+      referencedSOPItem->putAndInsertString(DCM_ReferencedSOPInstanceUID, instanceUIDs[imageId].c_str());
+    }
+
+  }
+
+  rwvDataset->putAndInsertString(DCM_ContentLabel, "RWV");
+  rwvDataset->putAndInsertString(DCM_InstanceNumber, "1");
+  rwvDataset->putAndInsertString(DCM_ContentDescription, "RWV");
+  rwvDataset->putAndInsertString(DCM_ContentCreatorName, "QIICR");
+  rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
+  rwvDataset->putAndInsertString(DCM_SoftwareVersions, SUVFactorCalculator_WC_REVISION);
+
+  // private coding scheme
+  DcmItem *privateCodingSchemeItem;
+  rwvDataset->findOrCreateSequenceItem(DCM_CodingSchemeIdentificationSequence, privateCodingSchemeItem);
+
+  // David Clunie's coding scheme, pending correction of the standard
+  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeDesignator, "99PMP");
+  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeUID, "1.3.6.1.4.1.5962.98.1");
+  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeName, "PixelMed Publishing");
+
+  std::string outputFileName = outputDir+"/"+uid+".dcm";
+  list.RWVMFile = outputFileName;
+  std::cout << "saving to " << outputFileName << std::endl;
+  OFCondition cond = rwvmFileFormat.saveFile(outputFileName.c_str(), EXS_LittleEndianExplicit);
+  if(cond.bad()){
+    std::cout << "Failed to save the result!" << std::endl;
+    std::cout << cond.text() << std::endl;
+  }
+
+  return true;
+}
 
 // ...
 // ...............................................................................................
@@ -1407,11 +1637,82 @@ int main( int argc, char * argv[] )
     {
     // pass the input parameters to the helper method
     list.PETDICOMPath = PETDICOMPath;
+    //list.SUVBWName = SUVBWName;
+    //list.SUVBSAName = SUVBSAName;
+    //list.SUVLBMName = SUVLBMName;
+    //list.SUVIBWName = SUVIBWName;
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
-    LoadImagesAndComputeSUV( list );
-    }
+    std::cout << "saving numbers to " << returnParameterFile << std::endl;
+    if(LoadImagesAndComputeSUV( list ) != EXIT_FAILURE){
+
+      std::vector<DSRCodedEntryValue> measurementsUnitsList;
+      std::vector<std::string> measurementsList;
+
+      std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
+      
+      if(list.SUVbwConversionFactor!=0.0)
+        {
+          SUVbwSStream << list.SUVbwConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
+          measurementsList.push_back(SUVbwSStream.str());
+        }
+      if(list.SUVlbmConversionFactor!=0.0)
+        {
+          SUVlbmSStream << list.SUVlbmConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
+          measurementsList.push_back(SUVlbmSStream.str());
+        }
+      if(list.SUVbsaConversionFactor!=0.0)
+        {
+          SUVbsaSStream << list.SUVbsaConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
+          measurementsList.push_back(SUVbsaSStream.str());
+        }
+      if(list.SUVibwConversionFactor!=0.0)
+        {
+          SUVibwSStream << list.SUVibwConversionFactor;
+          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
+          measurementsList.push_back(SUVibwSStream.str());
+        }
+
+      ExportRWV(list, PETDICOMPath, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
+      
+      ofstream writeFile;
+      writeFile.open( list.returnParameterFile.c_str() );
+     
+      writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
+      writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
+      writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
+      writeFile << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
+      writeFile << "injectedDose = " << list.injectedDose << std::endl;
+      //writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
+      writeFile << "patientWeight = " << list.patientWeight << std::endl;
+      writeFile << "patientHeight = " << list.patientHeight << std::endl;
+      writeFile << "patientSex = " << list.patientSex.c_str() << std::endl;
+      writeFile << "seriesReferenceTime = " << list.seriesReferenceTime.c_str() << std::endl;
+      writeFile << "injectionTime = " << list.injectionTime.c_str() << std::endl;
+      writeFile << "decayCorrection = " << list.decayCorrection.c_str() << std::endl;
+      writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
+      writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
+      writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
+      writeFile << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
+      writeFile << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
+      writeFile << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
+      writeFile << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
+      writeFile << "RWVMFile = " << list.RWVMFile << std::endl;
+
+      writeFile.close();
+
+      std::cout << list.SUVbsaConversionFactor << " " << list.SUVbwConversionFactor << " " <<
+                   list.SUVlbmConversionFactor << " " << list.SUVibwConversionFactor << std::endl;
+
+      } else {
+        std::cerr << "ERROR: Failed to compute SUV" << std::endl;
+        return EXIT_FAILURE;
+      }
+  }
 
   catch( itk::ExceptionObject & excep )
     {
