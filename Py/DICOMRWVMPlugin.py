@@ -128,7 +128,8 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.confidence = 0.90
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
-          newLoadables.append(self.sortLoadableSeriesFiles(rwvLoadable))
+          self.sortLoadableSeriesFiles(rwvLoadable)
+          newLoadables.append(rwvLoadable)
             
     return newLoadables
   
@@ -141,57 +142,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     
     
   def sortLoadableSeriesFiles(self, loadable):
-    """Sort the series files based on distance along the scan axis
-       Modified from DICOMScalarVolumePlugin """
-    positions = {}
-    orientations = {}
-    for dicomFile in loadable.files:
-      positions[dicomFile] = slicer.dicomDatabase.fileValue(dicomFile,self.tags['position'])
-      if positions[dicomFile] == "":
-        positions[dicomFile] = None
-      orientations[dicomFile] = slicer.dicomDatabase.fileValue(dicomFile,self.tags['orientation'])
-      if orientations[dicomFile] == "":
-        orientations[dicomFile] = None
-          
-    ref = {}
-    for tag in [self.tags['position'], self.tags['orientation']]:
-      value = slicer.dicomDatabase.fileValue(loadable.files[0], tag)
-      if not value or value == "":
-        loadable.warning = "Reference image in series does not contain geometry information.  Please use caution."
-        validGeometry = False
-        loadable.confidence = 0.2
-        break
-      ref[tag] = value
-          
-    sliceAxes = [float(zz) for zz in ref[self.tags['orientation']].split('\\')]
-    x = sliceAxes[:3]
-    y = sliceAxes[3:]
-    scanAxis = self.scalarVolumePlugin.cross(x,y)
-    scanOrigin = [float(zz) for zz in ref[self.tags['position']].split('\\')]
-     
-    sortList = []
-    missingGeometry = False
-    for dicomFile in loadable.files:
-      if not positions[dicomFile]:
-        missingGeometry = True
-        break
-      position = [float(zz) for zz in positions[dicomFile].split('\\')]
-      vec = self.scalarVolumePlugin.difference(position, scanOrigin)
-      dist = self.scalarVolumePlugin.dot(vec, scanAxis)
-      sortList.append((dicomFile, dist))
-
-    if missingGeometry:
-      loadable.warning = "One or more images is missing geometry information"
+    scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
+    svLoadables = scalarVolumePlugin.examine([loadable.files])
+    if not len(svLoadables):
+      print('Error: failed to parse PET volume!')
+      return
     else:
-      sortedFiles = sorted(sortList, key=lambda x: x[1])
-      distances = {}
-      loadable.files = []
-      for file,dist in sortedFiles:
-        loadable.files.append(file)
-        distances[file] = dist
-          
-    return loadable 
-           
+      loadable.files = svLoadables[0].files
+      return
   
   def load(self,loadable):
     """Use the conversion factor to load the volume into Slicer"""
