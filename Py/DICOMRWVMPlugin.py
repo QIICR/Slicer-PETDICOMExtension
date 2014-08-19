@@ -83,18 +83,21 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         loadables += cachedLoadables
       else:
         if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "RWV":
-          loadablesForFiles = self.getLoadablesFromRWVMFile(fileList)
+          if len(fileList)>1:
+            # TODO: look into logging using ctkFileLog
+            print('Warning: series contains more than 1 RWV instance! Only first one is considered!')
+          loadablesForFiles = self.getLoadablesFromRWVMFile(fileList[0])
           loadables += loadablesForFiles
-          self.cacheLoadables(fileList,loadablesForFiles)
+          self.cacheLoadables(fileList[0],loadablesForFiles)
 
     return loadables
 
     
-  def getLoadablesFromRWVMFile(self, fileList):
+  def getLoadablesFromRWVMFile(self, file):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
     
     newLoadables = []
-    dicomFile = dicom.read_file(fileList[0])
+    dicomFile = dicom.read_file(file)
     if dicomFile.Modality == "RWV":
       refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
       refSeriesSeq = dicomFile.ReferencedSeriesSequence
@@ -125,7 +128,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.confidence = 0.90
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
-          rwvLoadable.derivedItems = fileList
           newLoadables.append(self.sortLoadableSeriesFiles(rwvLoadable))
             
     return newLoadables
