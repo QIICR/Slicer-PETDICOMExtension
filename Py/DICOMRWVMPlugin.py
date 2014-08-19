@@ -203,7 +203,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       multiplier = vtk.vtkImageMathematics()
       multiplier.SetOperationToMultiplyByK()
       multiplier.SetConstantK(float(conversionFactor))
-      multiplier.SetInput1Data(imageNode.GetImageData())
+      if vtk.VTK_MAJOR_VERSION <= 5:
+        multiplier.SetInput1(imageNode.GetImageData())
+      else:
+        multiplier.SetInput1Data(imageNode.GetImageData())
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
       # create Subject Hierarchy nodes for the loaded series
