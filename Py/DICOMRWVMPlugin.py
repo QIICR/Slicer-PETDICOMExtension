@@ -83,18 +83,21 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         loadables += cachedLoadables
       else:
         if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "RWV":
-          loadablesForFiles = self.getLoadablesFromRWVMFile(fileList)
+          if len(fileList)>1:
+            # TODO: look into logging using ctkFileLog
+            print('Warning: series contains more than 1 RWV instance! Only first one is considered!')
+          loadablesForFiles = self.getLoadablesFromRWVMFile(fileList[0])
           loadables += loadablesForFiles
-          self.cacheLoadables(fileList,loadablesForFiles)
+          self.cacheLoadables(fileList[0],loadablesForFiles)
 
     return loadables
 
     
-  def getLoadablesFromRWVMFile(self, fileList):
+  def getLoadablesFromRWVMFile(self, file):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
     
     newLoadables = []
-    dicomFile = dicom.read_file(fileList[0])
+    dicomFile = dicom.read_file(file)
     if dicomFile.Modality == "RWV":
       refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
       refSeriesSeq = dicomFile.ReferencedSeriesSequence
@@ -111,6 +114,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
               instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
           # Get the Real World Values
           rwvLoadable.files = instanceFiles
+          rwvLoadable.rwvFile = file
           rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
           rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
           rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
@@ -119,14 +123,13 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
           
-          
           rwvLoadable.unitName = unitsSeq[0].CodeMeaning
           rwvLoadable.units = unitsSeq[0].CodeValue
           rwvLoadable.confidence = 0.90
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
-          rwvLoadable.derivedItems = fileList
-          newLoadables.append(self.sortLoadableSeriesFiles(rwvLoadable))
+          self.sortLoadableSeriesFiles(rwvLoadable)
+          newLoadables.append(rwvLoadable)
             
     return newLoadables
   
@@ -139,57 +142,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     
     
   def sortLoadableSeriesFiles(self, loadable):
-    """Sort the series files based on distance along the scan axis
-       Modified from DICOMScalarVolumePlugin """
-    positions = {}
-    orientations = {}
-    for dicomFile in loadable.files:
-      positions[dicomFile] = slicer.dicomDatabase.fileValue(dicomFile,self.tags['position'])
-      if positions[dicomFile] == "":
-        positions[dicomFile] = None
-      orientations[dicomFile] = slicer.dicomDatabase.fileValue(dicomFile,self.tags['orientation'])
-      if orientations[dicomFile] == "":
-        orientations[dicomFile] = None
-          
-    ref = {}
-    for tag in [self.tags['position'], self.tags['orientation']]:
-      value = slicer.dicomDatabase.fileValue(loadable.files[0], tag)
-      if not value or value == "":
-        loadable.warning = "Reference image in series does not contain geometry information.  Please use caution."
-        validGeometry = False
-        loadable.confidence = 0.2
-        break
-      ref[tag] = value
-          
-    sliceAxes = [float(zz) for zz in ref[self.tags['orientation']].split('\\')]
-    x = sliceAxes[:3]
-    y = sliceAxes[3:]
-    scanAxis = self.scalarVolumePlugin.cross(x,y)
-    scanOrigin = [float(zz) for zz in ref[self.tags['position']].split('\\')]
-     
-    sortList = []
-    missingGeometry = False
-    for dicomFile in loadable.files:
-      if not positions[dicomFile]:
-        missingGeometry = True
-        break
-      position = [float(zz) for zz in positions[dicomFile].split('\\')]
-      vec = self.scalarVolumePlugin.difference(position, scanOrigin)
-      dist = self.scalarVolumePlugin.dot(vec, scanAxis)
-      sortList.append((dicomFile, dist))
-
-    if missingGeometry:
-      loadable.warning = "One or more images is missing geometry information"
+    scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
+    svLoadables = scalarVolumePlugin.examine([loadable.files])
+    if not len(svLoadables):
+      print('Error: failed to parse PET volume!')
+      return
     else:
-      sortedFiles = sorted(sortList, key=lambda x: x[1])
-      distances = {}
-      loadable.files = []
-      for file,dist in sortedFiles:
-        loadable.files.append(file)
-        distances[file] = dist
-          
-    return loadable 
-           
+      loadable.files = svLoadables[0].files
+      return
   
   def load(self,loadable):
     """Use the conversion factor to load the volume into Slicer"""
@@ -203,11 +163,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       multiplier = vtk.vtkImageMathematics()
       multiplier.SetOperationToMultiplyByK()
       multiplier.SetConstantK(float(conversionFactor))
-      multiplier.SetInput1Data(imageNode.GetImageData())
+      if vtk.VTK_MAJOR_VERSION <= 5:
+        multiplier.SetInput1(imageNode.GetImageData())
+      else:
+        multiplier.SetInput1Data(imageNode.GetImageData())
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
-      # create Subject Hierarchy nodes for the loaded series
-      self.addSeriesInSubjectHierarchy(loadable,imageNode)
       
       # create list of DICOM instance UIDs corresponding to the loaded files
       instanceUIDs = ""
@@ -221,29 +182,20 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # get the instance UID for the RWVM object
       derivedItemUID = ""
       try:
-        derivedItemUID = slicer.dicomDatabase.fileValue(loadable.derivedItems[0],self.tags['sopInstanceUID'])
+        derivedItemUID = slicer.dicomDatabase.fileValue(loadable.rwvFile,self.tags['sopInstanceUID'])
       except AttributeError:
         # no derived items
         pass
       
       # Set Attributes
-      patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
-      patientBirthDate = self.__getSeriesInformation(loadable.files, self.tags['patientBirthDate'])
-      patientSex = self.__getSeriesInformation(loadable.files, self.tags['patientSex'])
-      patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
-      patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
-      
-      imageNode.SetAttribute('DICOM.PatientID', loadable.patientID)  
-      imageNode.SetAttribute('DICOM.PatientName', patientName)
-      imageNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
-      imageNode.SetAttribute('DICOM.PatientSex', patientSex)
-      imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
-      imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
-      imageNode.SetAttribute('DICOM.StudyDate', loadable.studyDate)
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
+      # Keep references to the PET instances, as these may be needed to
+      # establish correspondence between slice annotations and acutal slices,
+      # but also keep the RWVM instance UID ... it's confusing, but not sure
+      # if there is a better way in Slicer for now
       imageNode.SetAttribute("DICOM.instanceUIDs", instanceUIDs)
-      imageNode.SetAttribute("DICOM.RealWorldValueMappingUID", derivedItemUID)
+      imageNode.SetAttribute("DICOM.RWV.instanceUID", derivedItemUID)
     
       # automatically select the volume to display
       volumeLogic = slicer.modules.volumes.logic()
@@ -259,6 +211,9 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # Change name
       name = (loadable.name).replace(' ','_')
       imageNode.SetName(name)
+      
+      # create Subject Hierarchy nodes for the loaded series
+      self.addSeriesInSubjectHierarchy(loadable,imageNode)
 
     return imageNode
           
