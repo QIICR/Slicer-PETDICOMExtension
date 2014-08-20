@@ -121,12 +121,12 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
             for loadable in loadablesForFiles:
               loadable.confidence = 0.95
               self.abbreviateLoadableName(loadable)
-            loadables += loadablesForFiles
             self.cacheLoadables(fileList,loadablesForFiles)
             # there may be multiple loadables per one RWV series, add it only
             #  once. Note we only add RWV to the DB if we create a new RWV
             #  instance.
-            loadables[0].derivedItems = [rwvmFile]
+            loadablesForFiles[0].derivedItems = [rwvmFile]
+            loadables += loadablesForFiles
 
     return loadables
     
