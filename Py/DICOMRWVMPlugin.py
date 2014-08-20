@@ -114,6 +114,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
               instanceFiles += [slicer.dicomDatabase.fileForInstance(uid)]
           # Get the Real World Values
           rwvLoadable.files = instanceFiles
+          rwvLoadable.rwvFile = file
           rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
           rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
           rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
@@ -121,7 +122,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
           rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
-          
           
           rwvLoadable.unitName = unitsSeq[0].CodeMeaning
           rwvLoadable.units = unitsSeq[0].CodeValue
@@ -169,8 +169,6 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         multiplier.SetInput1Data(imageNode.GetImageData())
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
-      # create Subject Hierarchy nodes for the loaded series
-      self.addSeriesInSubjectHierarchy(loadable,imageNode)
       
       # create list of DICOM instance UIDs corresponding to the loaded files
       instanceUIDs = ""
@@ -184,29 +182,20 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # get the instance UID for the RWVM object
       derivedItemUID = ""
       try:
-        derivedItemUID = slicer.dicomDatabase.fileValue(loadable.derivedItems[0],self.tags['sopInstanceUID'])
+        derivedItemUID = slicer.dicomDatabase.fileValue(loadable.rwvFile,self.tags['sopInstanceUID'])
       except AttributeError:
         # no derived items
         pass
       
       # Set Attributes
-      patientName = self.__getSeriesInformation(loadable.files, self.tags['patientName'])
-      patientBirthDate = self.__getSeriesInformation(loadable.files, self.tags['patientBirthDate'])
-      patientSex = self.__getSeriesInformation(loadable.files, self.tags['patientSex'])
-      patientHeight = self.__getSeriesInformation(loadable.files, self.tags['patientHeight'])
-      patientWeight = self.__getSeriesInformation(loadable.files, self.tags['patientWeight'])
-      
-      imageNode.SetAttribute('DICOM.PatientID', loadable.patientID)  
-      imageNode.SetAttribute('DICOM.PatientName', patientName)
-      imageNode.SetAttribute('DICOM.PatientBirthDate', patientBirthDate)
-      imageNode.SetAttribute('DICOM.PatientSex', patientSex)
-      imageNode.SetAttribute('DICOM.PatientHeight', patientHeight)
-      imageNode.SetAttribute('DICOM.PatientWeight', patientWeight)
-      imageNode.SetAttribute('DICOM.StudyDate', loadable.studyDate)
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
+      # Keep references to the PET instances, as these may be needed to
+      # establish correspondence between slice annotations and acutal slices,
+      # but also keep the RWVM instance UID ... it's confusing, but not sure
+      # if there is a better way in Slicer for now
       imageNode.SetAttribute("DICOM.instanceUIDs", instanceUIDs)
-      imageNode.SetAttribute("DICOM.RealWorldValueMappingUID", derivedItemUID)
+      imageNode.SetAttribute("DICOM.RWV.instanceUID", derivedItemUID)
     
       # automatically select the volume to display
       volumeLogic = slicer.modules.volumes.logic()
@@ -222,6 +211,9 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # Change name
       name = (loadable.name).replace(' ','_')
       imageNode.SetName(name)
+      
+      # create Subject Hierarchy nodes for the loaded series
+      self.addSeriesInSubjectHierarchy(loadable,imageNode)
 
     return imageNode
           
