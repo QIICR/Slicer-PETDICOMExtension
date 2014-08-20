@@ -108,7 +108,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
                 if slicer.dicomDatabase.fileValue(seriesFile,self.tags['seriesModality']) == "RWV":
                   if ptFile.SeriesInstanceUID == self.getReferencedSeriesInstanceUID(seriesFile):
                     hasRWVM = True
-                    loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile([seriesFile])
+                    loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile(seriesFile)
                     for loadable in loadablesForFiles:
                       loadable.confidence = 1.0
                       self.abbreviateLoadableName(loadable)
@@ -117,12 +117,16 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
           if not hasRWVM:
             # Call SUV Factor Calculator to create RWVM files for this PET series
             rwvmFile = self.generateRWVMforFileList(fileList)
-            loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile([rwvmFile])
+            loadablesForFiles = self.rwvPlugin.getLoadablesFromRWVMFile(rwvmFile)
             for loadable in loadablesForFiles:
               loadable.confidence = 0.95
               self.abbreviateLoadableName(loadable)
-            loadables += loadablesForFiles
             self.cacheLoadables(fileList,loadablesForFiles)
+            # there may be multiple loadables per one RWV series, add it only
+            #  once. Note we only add RWV to the DB if we create a new RWV
+            #  instance.
+            loadablesForFiles[0].derivedItems = [rwvmFile]
+            loadables += loadablesForFiles
 
     return loadables
     
