@@ -1,11 +1,12 @@
-cmake_minimum_required(VERSION 2.8.7)
 
 #-----------------------------------------------------------------------------
 set(MODULE_NAME SUVFactorCalculator)
 
-find_package(Slicer REQUIRED)
-include(${Slicer_USE_FILE})
+#-----------------------------------------------------------------------------
 
+#
+# SlicerExecutionModel
+#
 find_package(SlicerExecutionModel REQUIRED GenerateCLP)
 include(${SlicerExecutionModel_USE_FILE})
 
@@ -44,12 +45,12 @@ set(MODULE_TARGET_LIBRARIES
   vtkITK
   ITKIODCMTK
   )
-  
+
 #-----------------------------------------------------------------------------
 SEMMacroBuildCLI(
   NAME ${MODULE_NAME}
-  INCLUDE_DIRECTORIES ${MODULE_INCLUDE_DIRECTORIES}
   TARGET_LIBRARIES ${MODULE_TARGET_LIBRARIES}
+  INCLUDE_DIRECTORIES ${MODULE_INCLUDE_DIRECTORIES}
   ADDITIONAL_SRCS ${MODULE_SRCS}
   EXECUTABLE_ONLY
   )
