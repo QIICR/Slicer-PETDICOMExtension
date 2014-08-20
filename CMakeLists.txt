@@ -18,7 +18,7 @@ include(${Slicer_USE_FILE})
 
 #-----------------------------------------------------------------------------
 # Extension modules
-add_subdirectory(SUVFactorCalculator)
+add_subdirectory(SUVFactorCalculatorCLI)
 add_subdirectory(DICOMRWVMPlugin)
 add_subdirectory(DICOMPETSUVPlugin)
 ## NEXT_MODULE
