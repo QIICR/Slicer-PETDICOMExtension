@@ -15,8 +15,6 @@ find_package(DCMTK REQUIRED)
 find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${MODULE_NAME}MacroExtractRepositoryInfo.cmake)
-
 #-----------------------------------------------------------------------------
 SlicerMacroExtractRepositoryInfo(VAR_PREFIX ${MODULE_NAME})
 configure_file(
