@@ -33,7 +33,9 @@
 // versioning info
 #include "vtkSUVFactorCalculatorVersionConfigure.h"
 
+// helpers
 #include "dcmHelpersCommon.h"
+#include "dcmUnitsConversionHelper.h"
 
 // ...
 // ...............................................................................................
@@ -121,10 +123,6 @@ namespace
 struct parameters
   {
     std::string PETDICOMPath;
-    //std::string SUVBWName;
-    //std::string SUVBSAName;
-    //std::string SUVLBMName;
-    //std::string SUVIBWName;
     std::string patientName;
     std::string studyDate;
     std::string radioactivityUnits;
@@ -153,610 +151,6 @@ struct parameters
     
     std::string RWVMFile;
 };
-
-// ...
-// ...............................................................................................
-// ...
-
-double ConvertTimeToSeconds(const char *time )
-{
-  if( time == NULL )
-    {
-    std::cerr << "ConvertTimeToSeconds got a NULL time string." << std::endl;
-    return -1.0;
-    }
-
-  std::string h;
-  std::string m;
-  std::string minAndsecStr;
-  std::string secStr;
-
-  double hours;
-  double minutes;
-  double seconds;
-
-  if( time == NULL )
-    {
-    return 0.0;
-    }
-
-  // ---
-  // --- time will be in format HH:MM:SS.SSSS
-  // --- convert to a double count of seconds.
-  // ---
-  std::string timeStr = time;
-  //size_t      i = timeStr.find_first_of(":");
-  h = timeStr.substr( 0, 2 );
-  hours = atof( h.c_str() );
-
-  minAndsecStr = timeStr.substr( 3 );
-  //size_t i = minAndsecStr.find_first_of( ":" );
-  m = minAndsecStr.substr(0, 2 );
-  minutes = atof( m.c_str() );
-
-  secStr = minAndsecStr.substr( 3 );
-  seconds = atof( secStr.c_str() );
-
-  double retval = ( seconds
-                    + (60.0 * minutes)
-                    + (3600.0 * hours ) );
-  return retval;
-}
-
-// ...
-// ...............................................................................................
-// ...
-double ConvertWeightUnits(double count, const char *fromunits, const char *tounits )
-{
-
-  double conversion = count;
-
-  if( fromunits == NULL )
-    {
-    std::cout << "Got NULL parameter fromunits. A bad param was probably specified." << std::endl;
-    return -1.0;
-    }
-  if( tounits == NULL )
-    {
-    std::cout << "Got NULL parameter from tounits. A bad parameter was probably specified." << std::endl;
-    return -1.0;
-    }
-
-  /*
-    possibilities include:
-  ---------------------------
-  "kilograms [kg]"
-  "grams [g]"
-  "pounds [lb]"
-  */
-
-  // --- kg to...
-  if( !strcmp(fromunits, "kg") )
-    {
-    if( !strcmp(tounits, "kg") )
-      {
-      return conversion;
-      }
-    else if( !strcmp(tounits, "g") )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !strcmp(tounits, "lb") )
-      {
-      conversion *= 2.2;
-      }
-    }
-  else if( !strcmp(fromunits, "g") )
-    {
-    if( !strcmp(tounits, "kg") )
-      {
-      conversion /= 1000.0;
-      }
-    else if( !strcmp(tounits, "g") )
-      {
-      return conversion;
-      }
-    else if( !strcmp(tounits, "lb") )
-      {
-      conversion *= .0022;
-      }
-    }
-  else if( !strcmp(fromunits, "lb") )
-    {
-    if( !strcmp(tounits, "kg") )
-      {
-      conversion *= 0.45454545454545453;
-      }
-    else if( !strcmp(tounits, "g") )
-      {
-      conversion *= 454.54545454545453;
-      }
-    else if( !strcmp(tounits, "lb") )
-      {
-      return conversion;
-      }
-    }
-  return conversion;
-
-}
-
-// ...
-// ...............................................................................................
-// ...
-double ConvertRadioactivityUnits(double count, const char *fromunits, const char *tounits )
-{
-
-  double conversion = count;
-
-  if( fromunits == NULL )
-    {
-    std::cout << "Got NULL parameter in fromunits. A bad parameter was probably specified." << std::endl;
-    return -1.0;
-    }
-  if( tounits == NULL )
-    {
-    std::cout << "Got NULL parameter in tounits. A bad parameter was probably specified." << std::endl;
-    return -1.0;
-    }
-
-/*
-  possibilities include:
-  ---------------------------
-  "megabecquerels [MBq]"
-  "kilobecquerels [kBq]"
-  "becquerels [Bq]"
-  "millibecquerels [mBq]"
-  "microbecquerels [uBq]
-  "megacuries [MCi]"
-  "kilocuries [kCi]"
-  "curies [Ci]"
-  "millicuries [mCi]"
-  "microcuries [uCi]"
-*/
-
-  // --- MBq to...
-  if( !strcmp(fromunits, "MBq" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 1000000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 1000000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 1000000000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.000027027027027027;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 0.027027027027027;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 27.027027027;
-      }
-    }
-  // --- kBq to...
-  else if( !strcmp(fromunits, "kBq" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= .001;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 1000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 1000000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 0.000027027027027027;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 0.027027027027027;
-      }
-    }
-  // --- Bq to...
-  else if( !strcmp(fromunits, "Bq" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 0.000001;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 1000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.000000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *=  0.000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 0.000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 0.000027027027027027;
-      }
-    }
-  // --- mBq to...
-  else if( !strcmp(fromunits, "mBq" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 0.000000001;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 0.000001;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.00000000000000000002702702702702;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.000000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 0.000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 0.000000027027027027027;
-      }
-    }
-  // --- uBq to...
-  else if( !strcmp(fromunits, "uBq" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 0.000000000001;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 0.000000001;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 0.000001;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.000000000000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.000000000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.000000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 0.000000000000027027027027027;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 0.000000000027027027027027;
-      }
-    }
-  // --- MCi to...
-  else if( !strcmp(fromunits, "MCi" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 37000000000.0;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 37000000000000.0;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 37000000000000000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 37000000000000000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *=  37000000000000000000848.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 1000000.0;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 1000000000.0;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 1000000000000.0;
-      }
-    }
-  // --- kCi to...
-  else if( !strcmp(fromunits, "kCi" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 37000000.0;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 37000000000.0;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 37000000000000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 37000000000000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 37000000000000000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 1000000.0;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 1000000000.0;
-      }
-    }
-  // --- Ci to...
-  else if( !strcmp(fromunits, "Ci" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 37000.0;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 37000000.0;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 37000000000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 37000000000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 37000000000000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.0000010;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 1000000.0;
-      }
-    }
-  // --- mCi to...
-  else if( !strcmp(fromunits, "mCi" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 37.0;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 37000.0;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 37000000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 37000000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 37000000000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.0000000010;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.0000010;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      return conversion;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      conversion *= 1000.0;
-      }
-    }
-  // --- uCi to...
-  else if( !strcmp(fromunits, " uCi" ) )
-    {
-    if( !(strcmp(tounits, "MBq" ) ) )
-      {
-      conversion *= 0.037;
-      }
-    else if( !(strcmp(tounits, "kBq" ) ) )
-      {
-      conversion *= 37.0;
-      }
-    else if( !(strcmp(tounits, "Bq" ) ) )
-      {
-      conversion *= 37000.0;
-      }
-    else if( !(strcmp(tounits, "mBq" ) ) )
-      {
-      conversion *= 37000000.0;
-      }
-    else if( !(strcmp(tounits, " uBq" ) ) )
-      {
-      conversion *= 37000000000.0;
-      }
-    else if( !(strcmp(tounits, "MCi" ) ) )
-      {
-      conversion *= 0.0000000000010;
-      }
-    else if( !(strcmp(tounits, "kCi" ) ) )
-      {
-      conversion *= 0.0000000010;
-      }
-    else if( !(strcmp(tounits, "Ci" ) ) )
-      {
-      conversion *= 0.0000010;
-      }
-    else if( !(strcmp(tounits, "mCi" ) ) )
-      {
-      conversion *= 0.001;
-      }
-    else if( !(strcmp(tounits, "uCi" ) ) )
-      {
-      return conversion;
-      }
-    }
-
-  return conversion;
-}
 
 // ...
 // ...............................................................................................
@@ -1310,8 +704,6 @@ int LoadImagesAndComputeSUV( parameters & list )
                   std::cerr << "ComputeSUV: got zero weight!" << std::endl;
                   return EXIT_FAILURE;
                 }
-              //double tissueConversionFactor = ConvertRadioactivityUnits(1, list.radioactivityUnits.c_str(), "kBq");
-              //dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "MBq");
               dose  = ConvertRadioactivityUnits( dose, list.radioactivityUnits.c_str(), "kBq");  // kBq/mL
               double decayedDose = DecayCorrection(list, dose);
               weight = ConvertWeightUnits( weight, list.weightUnits.c_str(), "kg");
@@ -1323,7 +715,6 @@ int LoadImagesAndComputeSUV( parameters & list )
                 }
               else
                 { //All values okay; perform calculation
-                  //SUVbwConversionFactor = weight * tissueConversionFactor / decayedDose;
                   list.SUVbwConversionFactor = weight / decayedDose;
                   if(height != 0.0)
                     {
@@ -1332,38 +723,30 @@ int LoadImagesAndComputeSUV( parameters & list )
                       double idealBodyMass;   // kg
                       
                       bodySurfaceArea = (pow(weight,0.425)*pow(height,0.725)*0.007184);
-                      //SUVbsaConversionFactor = bodySurfaceArea*tissueConversionFactor / decayedDose;
                       list.SUVbsaConversionFactor = bodySurfaceArea / decayedDose;
                       if(list.patientSex=="M")
                         {
                           //leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
                           leanBodyMass = 1.10*weight - 128*(weight/height)*(weight/height);  //TODO verify this formula
-                          //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
                           list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
                           
                           idealBodyMass = 48.0 + 1.06*(height - 152);
                           if(idealBodyMass > weight){ idealBodyMass = weight; };
-                          //SUVibwConversionFactor = idealBodyMass*tissueConversionFactor / decayedDose;
                           list.SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
                       if(list.patientSex=="F")
                         {
                           leanBodyMass = 1.07*weight - 148*(weight/height)*(weight/height);
-                          //SUVlbmConversionFactor = leanBodyMass*tissueConversionFactor / decayedDose;
                           list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
                           
                           idealBodyMass = 45.5 + 0.91*(height - 152);
                           if(idealBodyMass > weight){ idealBodyMass = weight; };
-                          //SUVibwConversionFactor = idealBodyMass*tissueConversionFactor / decayedDose;
                           list.SUVibwConversionFactor = idealBodyMass / decayedDose;
                         }
                     }
                   else
                     {
                       std::cout << "Warning: No patient height detected.  Cannot determine SUVbsa, SUVlbm, and SUVibw conversion factors." << std::endl;
-                      //list.SUVbsaConversionFactor = NULL;
-                      //list.SUVlbmConversionFactor = NULL;
-                      //list.SUVibwConversionFactor = NULL;
                     }
                 }
             }
@@ -1384,31 +767,6 @@ int LoadImagesAndComputeSUV( parameters & list )
       std::cout << "No corrected image detected." << std::endl;
       return EXIT_FAILURE;
     }
-
-  /*ofstream writeFile;
-  writeFile.open( list.returnParameterFile.c_str() );
- 
-  writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
-  writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
-  writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
-  writeFile << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
-  writeFile << "injectedDose = " << list.injectedDose << std::endl;
-  //writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
-  writeFile << "patientWeight = " << list.patientWeight << std::endl;
-  writeFile << "patientHeight = " << list.patientHeight << std::endl;
-  writeFile << "patientSex = " << list.patientSex.c_str() << std::endl;
-  writeFile << "seriesReferenceTime = " << list.seriesReferenceTime.c_str() << std::endl;
-  writeFile << "injectionTime = " << list.injectionTime.c_str() << std::endl;
-  writeFile << "decayCorrection = " << list.decayCorrection.c_str() << std::endl;
-  writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
-  writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
-  writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
-  writeFile << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
-  writeFile << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
-  writeFile << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
-  writeFile << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
-
-  writeFile.close();*/
   
   return EXIT_SUCCESS;
 
@@ -1637,10 +995,6 @@ int main( int argc, char * argv[] )
     {
     // pass the input parameters to the helper method
     list.PETDICOMPath = PETDICOMPath;
-    //list.SUVBWName = SUVBWName;
-    //list.SUVBSAName = SUVBSAName;
-    //list.SUVLBMName = SUVLBMName;
-    //list.SUVIBWName = SUVIBWName;
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;

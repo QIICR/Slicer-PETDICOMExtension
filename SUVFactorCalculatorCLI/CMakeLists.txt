@@ -33,6 +33,7 @@ set(MODULE_INCLUDE_DIRECTORIES
 set(MODULE_SRCS
   itkDCMTKFileReader.cxx
   dcmHelpersCommon.cxx
+  dcmUnitsConversionHelper.cxx
   SUVFactorCalculator.cxx  
   )
 
