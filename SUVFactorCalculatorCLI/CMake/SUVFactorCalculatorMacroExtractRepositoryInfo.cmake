@@ -51,7 +51,7 @@
 #  <var-prefix>_WC_INFO
 #
 
-macro(SlicerMacroExtractRepositoryInfo)
+macro(SUVFactorCalculatorMacroExtractRepositoryInfo)
   include(CMakeParseArguments)
   set(options)
   set(oneValueArgs VAR_PREFIX SOURCE_DIR)
