@@ -8,8 +8,8 @@ set(EXTENSION_HOMEPAGE "http://www.example.com/Slicer/Extensions/PETDICOMExtensi
 set(EXTENSION_CATEGORY "Converters")
 set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Andrey Fedorov (BWH, SPL)")
 set(EXTENSION_DESCRIPTION "The PET DICOM Extension provides tools to import PET Standardized Uptake Value images from DICOM into Slicer.")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/PETDICOMExtension.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/PETDICOMExtension/Screenshots/1.png")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/QIICR/Slicer-PETDICOMExtension/master/PETDICOMExtension.png")
+#set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/PETDICOMExtension/Screenshots/1.png")
 
 #-----------------------------------------------------------------------------
 # Extension dependencies
