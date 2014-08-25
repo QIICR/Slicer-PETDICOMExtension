@@ -9,7 +9,7 @@ set(EXTENSION_CATEGORY "Converters")
 set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Andrey Fedorov (BWH, SPL)")
 set(EXTENSION_DESCRIPTION "The PET DICOM Extension provides tools to import PET Standardized Uptake Value images from DICOM into Slicer.")
 set(EXTENSION_ICONURL "https://raw.githubusercontent.com/QIICR/Slicer-PETDICOMExtension/master/PETDICOMExtension.png")
-#set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/PETDICOMExtension/Screenshots/1.png")
+set(EXTENSION_SCREENSHOTURLS "http://wiki.slicer.org/slicerWiki/images/thumb/2/2e/SUV_Factor_Calculator_GUI.png/418px-SUV_Factor_Calculator_GUI.png http://wiki.slicer.org/slicerWiki/images/thumb/2/29/DICOM_Browser_RWVM_Plugin.png/800px-DICOM_Browser_RWVM_Plugin.png http://wiki.slicer.org/slicerWiki/images/thumb/4/43/DICOM_Browser_PET_SUV_Plugin.png/800px-DICOM_Browser_PET_SUV_Plugin.png")
 
 #-----------------------------------------------------------------------------
 # Extension dependencies
