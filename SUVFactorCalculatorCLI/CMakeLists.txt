@@ -31,6 +31,10 @@ set(MODULE_INCLUDE_DIRECTORIES
   )
 
 set(MODULE_SRCS
+  itkDCMTKFileReader.h
+  dcmHelpersCommon.h
+  dcmUnitsConversionHelper.h
+  SUVFactorCalculator.xml
   itkDCMTKFileReader.cxx
   dcmHelpersCommon.cxx
   dcmUnitsConversionHelper.cxx
