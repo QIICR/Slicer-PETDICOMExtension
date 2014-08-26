@@ -15,6 +15,8 @@ find_package(DCMTK REQUIRED)
 find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
+find_package(VTK REQUIRED)
+
 #-----------------------------------------------------------------------------
 SlicerMacroExtractRepositoryInfo(VAR_PREFIX ${MODULE_NAME})
 configure_file(
@@ -45,6 +47,7 @@ set(MODULE_TARGET_LIBRARIES
   ${ITK_LIBRARIES}
   ${VTK_LIBRARIES}
   ${DCMTK_LIBRARIES}
+  vtkIOCore
   vtkITK
   ITKIODCMTK
   )
