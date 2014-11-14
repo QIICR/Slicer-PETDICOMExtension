@@ -877,18 +877,11 @@ bool ExportRWV(parameters & list, std::string inputDir,
                                           measurement.getCodingSchemeDesignator().c_str(),
                                           measurement.getCodeMeaning().c_str()));
 
-    // private stuff, pending amendment of the standard
-    rwvSeqItem->putAndInsertString(DcmTag(0x0041,0x0010, EVR_LO),"PixelMed Publishing");
-    DcmItem *quantitySeqItem, *measurementMethodSeqItem;
-    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),quantitySeqItem).bad()){
-    //if(rwvSeqItem->findOrCreateSequenceItem(DCM_RealWorldValueMappingSequence,quantitySeqItem).bad()){
-      std::cerr << "Failed to add private sequence" << std::endl;
-    }
     quantitySeqItem->putAndInsertString(DCM_ValueType,"CODE");
     InsertCodeSequence(quantitySeqItem, DCM_ConceptNameCodeSequence,
                        DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
     InsertCodeSequence(quantitySeqItem, DCM_ConceptCodeSequence,
-                       DSRCodedEntryValue("250121","99PMP","Standardized Uptake Value"));
+                       DSRCodedEntryValue("126400","DCM","Standardized Uptake Value"));
 
     if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),measurementMethodSeqItem, 1).bad()){
       std::cerr << "Failed to add private sequence" << std::endl;
@@ -899,22 +892,22 @@ bool ExportRWV(parameters & list, std::string inputDir,
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("250132","99PMP","SUV body weight calculation method"));    
+                         DSRCodedEntryValue("126410","DCM","SUV body weight calculation method"));    
     } else if(measurement.getCodeValue() == "{SUVlbm}g/ml"){
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("250133","99PMP","SUV lean body mass calculation method"));    
+                         DSRCodedEntryValue("126411","DCM","SUV lean body mass calculation method"));    
     } else if(measurement.getCodeValue() == "{SUVbsa}cm2/ml"){
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("250134","99PMP","SUV body surface area calculation method"));    
+                         DSRCodedEntryValue("126412","DCM","SUV body surface area calculation method"));    
     } else if(measurement.getCodeValue() == "{SUVibw}g/ml"){
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("250135","99PMP","SUV ideal body weight calculation method"));    
+                         DSRCodedEntryValue("126413","DCM","SUV ideal body weight calculation method"));    
     };
 
     for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
@@ -932,15 +925,6 @@ bool ExportRWV(parameters & list, std::string inputDir,
   rwvDataset->putAndInsertString(DCM_ContentCreatorName, "QIICR");
   rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
   rwvDataset->putAndInsertString(DCM_SoftwareVersions, SUVFactorCalculator_WC_REVISION);
-
-  // private coding scheme
-  DcmItem *privateCodingSchemeItem;
-  rwvDataset->findOrCreateSequenceItem(DCM_CodingSchemeIdentificationSequence, privateCodingSchemeItem);
-
-  // David Clunie's coding scheme, pending correction of the standard
-  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeDesignator, "99PMP");
-  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeUID, "1.3.6.1.4.1.5962.98.1");
-  privateCodingSchemeItem->putAndInsertString(DCM_CodingSchemeName, "PixelMed Publishing");
 
   std::string outputFileName = outputDir+"/"+uid+".dcm";
   list.RWVMFile = outputFileName;
