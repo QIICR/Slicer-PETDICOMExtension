@@ -877,13 +877,18 @@ bool ExportRWV(parameters & list, std::string inputDir,
                                           measurement.getCodingSchemeDesignator().c_str(),
                                           measurement.getCodeMeaning().c_str()));
 
+    DcmItem *quantitySeqItem, *measurementMethodSeqItem;
+    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0040,0x9220, EVR_SQ),quantitySeqItem).bad()){
+      std::cerr << "Failed to add Quantity Definition sequence" << std::endl;
+    }
+
     quantitySeqItem->putAndInsertString(DCM_ValueType,"CODE");
     InsertCodeSequence(quantitySeqItem, DCM_ConceptNameCodeSequence,
                        DSRCodedEntryValue("G-C1C6","SRT","Quantity"));
     InsertCodeSequence(quantitySeqItem, DCM_ConceptCodeSequence,
                        DSRCodedEntryValue("126400","DCM","Standardized Uptake Value"));
 
-    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0041,0x1001, EVR_SQ),measurementMethodSeqItem, 1).bad()){
+    if(rwvSeqItem->findOrCreateSequenceItem(DcmTag(0x0040,0x9220, EVR_SQ),measurementMethodSeqItem, 1).bad()){
       std::cerr << "Failed to add private sequence" << std::endl;
     }
     measurementMethodSeqItem->putAndInsertString(DCM_ValueType,"CODE");
