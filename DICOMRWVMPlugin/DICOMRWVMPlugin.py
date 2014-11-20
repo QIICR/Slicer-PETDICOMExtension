@@ -205,9 +205,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       appLogic.PropagateVolumeSelection()
       
       # Change display
+      # The RWVM plugin does not assume anything about the modality of the images.
+      # LUT, window, level, etc. should be handled by a modality-specific plugin (e.g. DICOMPETPlugin)
       displayNode = imageNode.GetVolumeDisplayNode()
       displayNode.SetInterpolate(0)
-      
+      displayNode.SetAutoWindowLevel(1)
+
       # Change name
       name = (loadable.name).replace(' ','_')
       imageNode.SetName(name)
