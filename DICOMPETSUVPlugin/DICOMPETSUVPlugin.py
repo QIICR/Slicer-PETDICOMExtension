@@ -183,9 +183,9 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     # This will likely depend on the type of SUV.
     displayNode = imageNode.GetVolumeDisplayNode()
     displayNode.AutoWindowLevelOff()
-    displayNode.SetWindowLevel(22.6,9.3)
-    displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
-    #displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+    displayNode.SetWindowLevel(6,3)
+    #displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
+    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
     return imageNode
 
   
