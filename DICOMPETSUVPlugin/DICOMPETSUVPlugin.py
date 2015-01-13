@@ -178,14 +178,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     
     # Call the DICOMRWVMPlugin to get the image node
     imageNode = self.rwvPlugin.load(loadable)
-    
-    # TODO Determine a proper LUT, window, and level for SUV images.
-    # This will likely depend on the type of SUV.
-    displayNode = imageNode.GetVolumeDisplayNode()
-    displayNode.AutoWindowLevelOff()
-    displayNode.SetWindowLevel(6,3)
-    #displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
-    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
     return imageNode
 
   

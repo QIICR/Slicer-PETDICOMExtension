@@ -128,6 +128,24 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.confidence = 0.90
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
+          
+          # determine modality of referenced series
+          refSeriesFiles = slicer.dicomDatabase.filesForSeries(refSeriesSeq[0].SeriesInstanceUID)
+          refSeriesFile0 = dicom.read_file(refSeriesFiles[0])
+          rwvLoadable.referencedModality = refSeriesFile0.Modality
+          
+          # add radionuclide info if PET
+          if rwvLoadable.referencedModality == 'PT':
+            print('\nFound Referenced PET series\n')
+            ris = refSeriesFile0.RadiopharmaceuticalInformationSequence[0]
+            rcs = ris.RadionuclideCodeSequence
+            print('RadionuclideCodeSequence:')
+            print rcs
+            if len(rcs) > 0:
+              rwvLoadable.RadionuclideCodeValue = rcs[0].CodeValue
+            else:
+              print('WARNING: Cannot find radionuclide info for PET Series!')
+          
           self.sortLoadableSeriesFiles(rwvLoadable)
           newLoadables.append(rwvLoadable)
             
@@ -205,11 +223,29 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       appLogic.PropagateVolumeSelection()
       
       # Change display
-      # The RWVM plugin does not assume anything about the modality of the images.
-      # LUT, window, level, etc. should be handled by a modality-specific plugin (e.g. DICOMPETPlugin)
       displayNode = imageNode.GetVolumeDisplayNode()
       displayNode.SetInterpolate(0)
-      displayNode.SetAutoWindowLevel(1)
+      if loadable.referencedModality == 'PT':
+        radionuclideCode = ''
+        try:
+          radionuclideCode = loadable.RadionuclideCodeValue
+          imageNode.SetAttribute('DICOM.RadionuclideCodeValue',radionuclideCode)
+          print('\nFound Radionuclide Code ' + radionuclideCode)
+        except AttributeError:
+          imageNode.SetAttribute('DICOM.RadionuclideCodeValue','unknown')
+        if radionuclideCode in ('C-B1031','C-111A1'): # TODO FDG or ^18^Fluorine
+          displayNode.AutoWindowLevelOff()
+          displayNode.SetWindowLevel(6,3)
+          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+        elif radionuclideCode == 'C-B1036': # FLT
+          displayNode.AutoWindowLevelOff()
+          displayNode.SetWindowLevel(4,2)
+          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+        else:
+          displayNode.SetAutoWindowLevel(1)
+          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')        
+      else:
+        displayNode.SetAutoWindowLevel(1)
 
       # Change name
       name = (loadable.name).replace(' ','_')
