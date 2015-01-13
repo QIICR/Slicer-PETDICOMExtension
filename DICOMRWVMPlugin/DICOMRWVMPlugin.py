@@ -134,17 +134,22 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           refSeriesFile0 = dicom.read_file(refSeriesFiles[0])
           rwvLoadable.referencedModality = refSeriesFile0.Modality
           
-          # add radionuclide info if PET
+          # add radiopharmaceutical info if PET
           if rwvLoadable.referencedModality == 'PT':
-            print('\nFound Referenced PET series\n')
+            print('Found Referenced PET series')
             ris = refSeriesFile0.RadiopharmaceuticalInformationSequence[0]
-            rcs = ris.RadionuclideCodeSequence
-            print('RadionuclideCodeSequence:')
-            print rcs
-            if len(rcs) > 0:
-              rwvLoadable.RadionuclideCodeValue = rcs[0].CodeValue
-            else:
-              print('WARNING: Cannot find radionuclide info for PET Series!')
+            try: # TODO Many DICOM series do not have radiopharmaceutical code sequence!
+              rcs = ris.RadiopharmaceuticalCodeSequence
+              if len(rcs) > 0:
+                rwvLoadable.RadiopharmaceuticalCodeValue = rcs[0].CodeValue
+            except AttributeError:
+              print('WARNING: series does not have radiopharmaceutical code sequence.')
+            try:
+              rcs = ris.RadionuclideCodeSequence
+              if len(rcs) > 0:
+                rwvLoadable.RadionuclideCodeValue = rcs[0].CodeValue
+            except AttributeError:
+              print('WARNING: Cannot find radionuclide info for PET Series.')
           
           self.sortLoadableSeriesFiles(rwvLoadable)
           newLoadables.append(rwvLoadable)
@@ -226,24 +231,33 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       displayNode = imageNode.GetVolumeDisplayNode()
       displayNode.SetInterpolate(0)
       if loadable.referencedModality == 'PT':
-        radionuclideCode = ''
+        radiopharmaceuticalCode = ''
         try:
-          radionuclideCode = loadable.RadionuclideCodeValue
-          imageNode.SetAttribute('DICOM.RadionuclideCodeValue',radionuclideCode)
-          print('\nFound Radionuclide Code ' + radionuclideCode)
+          radiopharmaceuticalCode = loadable.RadiopharmaceuticalCodeValue
+          imageNode.SetAttribute('DICOM.RadiopharmaceuticalCodeValue',radiopharmaceuticalCode)
+          print('Found Radiopharmaceutical Code ' + radiopharmaceuticalCode)
         except AttributeError:
-          imageNode.SetAttribute('DICOM.RadionuclideCodeValue','unknown')
-        if radionuclideCode in ('C-B1031','C-111A1'): # TODO FDG or ^18^Fluorine
+          imageNode.SetAttribute('DICOM.RadiopharmaceuticalCodeValue','unknown')
+          # use radionuclide info instead
+          radionuclideCode = ''
+          try:
+            radionuclideCode = loadable.RadionuclideCodeValue
+            imageNode.SetAttribute('DICOM.RadionuclideCodeValue',radionuclideCode)
+            print('Found Radionuclide Code ' + radionuclideCode)
+          except AttributeError:
+            imageNode.SetAttribute('DICOM.RadionuclideCodeValue','unknown')
+        if radiopharmaceuticalCode == 'C-B1031': # FDG
           displayNode.AutoWindowLevelOff()
           displayNode.SetWindowLevel(6,3)
           displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
-        elif radionuclideCode == 'C-B1036': # FLT
+        elif radiopharmaceuticalCode == 'C-B1036': # FLT
           displayNode.AutoWindowLevelOff()
           displayNode.SetWindowLevel(4,2)
           displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
-        else:
-          displayNode.SetAutoWindowLevel(1)
-          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')        
+        else: # Default W/L if no info about radiopharmaceutical can be found, often FDG
+          displayNode.AutoWindowLevelOff()
+          displayNode.SetWindowLevel(6,3)
+          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')     
       else:
         displayNode.SetAutoWindowLevel(1)
 
