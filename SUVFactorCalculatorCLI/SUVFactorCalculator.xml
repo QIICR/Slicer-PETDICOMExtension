@@ -4,10 +4,10 @@
   <title>SUV Factor Calculator</title>
   <description><![CDATA[Computes the standardized uptake value conversion factors based on body weight, lean body mass, body surface area, and ideal body weight. Takes an input path to a directory containing a PET volume (DICOM header must contain Radiopharmaceutical parameters).]]></description>
   <version>0.1.0</version>
-  <documentation-url>http://www.slicer.org/slicerWiki/index.php/Documentation/4.3/Modules/SUVFactorCalculator</documentation-url>
+  <documentation-url>http://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/SUVFactorCalculator</documentation-url>
   <license/>
-  <contributor>Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL, BWH), Markus Van Tol (University of Iowa), Hans Johnson (University of Iowa), Wendy Plesniak (SPL, BWH), Nicole Aucoin (SPL, BWH), Ron Kikinis (SPL, BWH)</contributor>
-  <acknowledgements><![CDATA[This work is funded in part by NIH National Cancer Institute grant U24 CA180918, the Harvard Catalyst, and the National Alliance for Medical Image Computing (NAMIC), funded by the National Institutes of Health through the NIH Roadmap for Medical Research, Grant U54 EB005149.]]></acknowledgements>
+  <contributor>Andrey Fedorov (SPL), Ethan Ulrich (University of Iowa), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa), Hans Johnson (University of Iowa), Wendy Plesniak (SPL, BWH), Nicole Aucoin (SPL, BWH), Ron Kikinis (SPL, BWH)</contributor>
+  <acknowledgements><![CDATA[This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918. ]]></acknowledgements>
   <parameters>
     <label>Input Image</label>
     <description><![CDATA[Input parameters]]></description>
