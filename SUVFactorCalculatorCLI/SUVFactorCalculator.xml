@@ -31,15 +31,17 @@
       <name>seriesDescription</name>
       <label>Series description</label>
       <channel>input</channel>
-      <longflag>seriesDescription</longflag>
+      <longflag>--seriesDescription</longflag>
       <description>Series description</description>
+      <default>PET SUV Factors</default>
     </string>
     <string>
       <name>seriesNumber</name>
       <label>Series Number</label>
       <channel>input</channel>
-      <longflag>seriesNumber</longflag>
+      <longflag>--seriesNumber</longflag>
       <description>Series number</description>
+      <default>1000</default>
     </string>
   </parameters>
   <!--
