@@ -146,7 +146,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
     
-    rwvFile = SUVFactorCalculator.GetParameterDefault(1,19)
+    rwvFile = SUVFactorCalculator.GetParameterDefault(1,18)
 
     return rwvFile
 
