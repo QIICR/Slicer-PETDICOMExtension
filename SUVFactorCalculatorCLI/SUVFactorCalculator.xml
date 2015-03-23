@@ -19,6 +19,28 @@
       <longflag>--petDICOMPath</longflag>
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
     </directory>
+    <directory>
+      <name>RWVDICOMPath</name>
+      <label>RWV mapping object DICOM volume path</label>
+      <channel>input</channel>
+      <flag>-r</flag>
+      <longflag>--rwvmDICOMPath</longflag>
+      <description><![CDATA[Input path to a directory to store the RWV object with the SUV computation result]]></description>
+    </directory>
+    <string>
+      <name>seriesDescription</name>
+      <label>Series description</label>
+      <channel>input</channel>
+      <longflag>seriesDescription</longflag>
+      <description>Series description</description>
+    </string>
+    <string>
+      <name>seriesNumber</name>
+      <label>Series Number</label>
+      <channel>input</channel>
+      <longflag>seriesNumber</longflag>
+      <description>Series number</description>
+    </string>
   </parameters>
   <!--
   <parameters>
@@ -58,14 +80,7 @@
     <label>Output</label>
     <description><![CDATA[output]]></description>
     
-    <directory>
-      <name>RWVDICOMPath</name>
-      <label>RWV mapping object DICOM volume path</label>
-      <channel>output</channel>
-      <flag>-r</flag>
-      <longflag>--rwvmDICOMPath</longflag>
-      <description><![CDATA[Input path to a directory to store the RWV object with the SUV computation result]]></description>
-    </directory>
+    
 
     <string>
       <name>radioactivityUnits</name>

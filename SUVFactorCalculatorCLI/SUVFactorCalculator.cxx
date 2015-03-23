@@ -11,10 +11,10 @@
 #include <itkImageFileReader.h>
 #include <itkNrrdImageIO.h>
 #include <itkImageFileWriter.h>
-#include <itkImageRegionIterator.h>
+#include <itkImageRegionConstIterator.h>
 #include <itkImageDuplicator.h>
 #include "itkGDCMImageIO.h"
-
+#include "itkNumericTraits.h"
 
 #undef HAVE_SSTREAM
 #include "itkDCMTKFileReader.h"
@@ -150,6 +150,9 @@ struct parameters
     double SUVibwConversionFactor;
     
     std::string RWVMFile;
+    short maxPixelValue;
+    std::string seriesDescription;
+    std::string seriesNumber;
 };
 
 // ...
@@ -223,7 +226,35 @@ int LoadImagesAndComputeSUV( parameters & list )
   typedef short PixelValueType;
   typedef itk::Image< PixelValueType, 3 > VolumeType;
   typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
+  itk::GDCMImageIO::Pointer dicomIO = itk::GDCMImageIO::New();
   const VolumeReaderType::FileNamesContainer & filenames = inputNames->GetFileNames(seriesUIDs[0]);
+  
+  VolumeReaderType::Pointer volumeReader = VolumeReaderType::New();
+  volumeReader->SetImageIO( dicomIO );
+  volumeReader->SetFileNames( filenames );
+  try{
+      volumeReader->Update();
+    }
+      catch (itk::ExceptionObject &ex)
+    {
+      std::cout << ex << std::endl;
+      return EXIT_FAILURE;
+    }
+  // Determine largest value
+  typedef itk::ImageRegionConstIterator< VolumeType > VolumeIteratorType;
+  VolumeIteratorType vit(volumeReader->GetOutput(), volumeReader->GetOutput()->GetRequestedRegion());
+  PixelValueType maxValue = itk::NumericTraits<PixelValueType>::min();
+  vit.GoToBegin();
+  while(!vit.IsAtEnd())
+    {
+      PixelValueType value = vit.Value();
+      if(maxValue < value)
+        {
+          maxValue = value;
+        }
+      ++vit;
+    }
+  list.maxPixelValue = maxValue;
 
   std::string tag;
   std::string yearstr;
@@ -827,7 +858,7 @@ bool ExportRWV(parameters & list, std::string inputDir,
   dcmGenerateUniqueIdentifier(uid);
   rwvDataset->putAndInsertString(DCM_Modality,"RWV");
   rwvDataset->putAndInsertString(DCM_SeriesInstanceUID, uid);
-  rwvDataset->putAndInsertString(DCM_SeriesNumber,"1000");
+  rwvDataset->putAndInsertString(DCM_SeriesNumber,list.seriesNumber.c_str());
 
   // SOP Common Module
   dcmGenerateUniqueIdentifier(uid);
@@ -857,7 +888,7 @@ bool ExportRWV(parameters & list, std::string inputDir,
   rwvDataset->putAndInsertString(DCM_ContentTime, contentTime.c_str());
   rwvDataset->putAndInsertString(DCM_SeriesDate, contentDate.c_str());
   rwvDataset->putAndInsertString(DCM_SeriesTime, contentTime.c_str());
-  rwvDataset->putAndInsertString(DCM_SeriesDescription, "PET SUV factors");
+  rwvDataset->putAndInsertString(DCM_SeriesDescription, list.seriesDescription.c_str());
 
   for(unsigned int measurementId=0;measurementId<measurementUnitsList.size();measurementId++){
     DcmItem *referencedImageRWVSeqItem, *rwvSeqItem;//, *rwvUnits;
@@ -867,7 +898,7 @@ bool ExportRWV(parameters & list, std::string inputDir,
     rwvSeqItem->putAndInsertString(DCM_LUTExplanation,measurementUnitsList[measurementId].getCodeMeaning().c_str());
     rwvSeqItem->putAndInsertString(DCM_LUTLabel,measurementUnitsList[measurementId].getCodeValue().c_str());
     rwvSeqItem->putAndInsertSint16(DCM_RealWorldValueFirstValueMapped,0);
-    rwvSeqItem->putAndInsertUint16(DCM_RealWorldValueLastValueMapped,10000);
+    rwvSeqItem->putAndInsertUint16(DCM_RealWorldValueLastValueMapped,list.maxPixelValue);
     rwvSeqItem->putAndInsertString(DCM_RealWorldValueIntercept,"0");
     rwvSeqItem->putAndInsertString(DCM_RealWorldValueSlope, measurementsList[measurementId].c_str());
 
@@ -930,6 +961,7 @@ bool ExportRWV(parameters & list, std::string inputDir,
   rwvDataset->putAndInsertString(DCM_ContentCreatorName, "QIICR");
   rwvDataset->putAndInsertString(DCM_Manufacturer, "https://github.com/QIICR/Slicer-SUVFactorCalculator");
   rwvDataset->putAndInsertString(DCM_SoftwareVersions, SUVFactorCalculator_WC_REVISION);
+  //CHECK_COND(rwvDataset->putAndInsertString(DCM_BodyPartExamined, "HEADNECK"));
 
   std::string outputFileName = outputDir+"/"+uid+".dcm";
   list.RWVMFile = outputFileName;
@@ -979,11 +1011,14 @@ int main( int argc, char * argv[] )
   list.frameReferenceTime = "MODULE_INIT_NO_VALUE";
   list.weightUnits = "kg";
   list.correctedImage = "MODULE_INIT_NO_VALUE";
+  list.maxPixelValue = itk::NumericTraits< short >::min();
 
   try
     {
     // pass the input parameters to the helper method
     list.PETDICOMPath = PETDICOMPath;
+    list.seriesDescription = seriesDescription;
+    list.seriesNumber = seriesNumber;
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
