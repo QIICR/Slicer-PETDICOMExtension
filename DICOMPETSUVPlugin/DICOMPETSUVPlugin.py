@@ -4,6 +4,7 @@ from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
 
+import dicom
 
 import DICOMLib
 
