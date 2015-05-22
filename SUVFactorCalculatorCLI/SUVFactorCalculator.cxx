@@ -153,6 +153,7 @@ struct parameters
     short maxPixelValue;
     std::string seriesDescription;
     std::string seriesNumber;
+    std::string instanceNumber;
 };
 
 // ...
@@ -859,6 +860,7 @@ bool ExportRWV(parameters & list, std::string inputDir,
   rwvDataset->putAndInsertString(DCM_Modality,"RWV");
   rwvDataset->putAndInsertString(DCM_SeriesInstanceUID, uid);
   rwvDataset->putAndInsertString(DCM_SeriesNumber,list.seriesNumber.c_str());
+  rwvDataset->putAndInsertString(DCM_InstanceNumber,list.instanceNumber.c_str());
 
   // SOP Common Module
   dcmGenerateUniqueIdentifier(uid);
@@ -1019,6 +1021,7 @@ int main( int argc, char * argv[] )
     list.PETDICOMPath = PETDICOMPath;
     list.seriesDescription = seriesDescription;
     list.seriesNumber = seriesNumber;
+    list.instanceNumber = instanceNumber;
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
