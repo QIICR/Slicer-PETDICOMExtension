@@ -19,6 +19,14 @@
       <longflag>--petDICOMPath</longflag>
       <description><![CDATA[Input path to a directory containing a PET volume containing DICOM header information for SUV computation]]></description>
     </directory>
+    <string>
+      <name>PETSeriesInstanceUID</name>
+      <label>Instance UID of PET series </label>
+      <channel>input</channel>
+      <longflag>--petSeriesInstanceUID</longflag>
+      <description><![CDATA[Instance UID of PET series (if multiple series in PET dicom path)]]></description>
+      <default></default>
+    </string>
     <directory>
       <name>RWVDICOMPath</name>
       <label>RWV mapping object DICOM volume path</label>

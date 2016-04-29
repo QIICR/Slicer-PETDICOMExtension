@@ -47,6 +47,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     self.tags['seriesModality'] = "0008,0060"
     self.tags['seriesInstanceUID'] = "0020,000E"
     self.tags['sopInstanceUID'] = "0008,0018"
+    self.tags['seriesInstanceUID'] = "0020,000e"
   
     self.tags['studyInstanceUID'] = "0020,000D"
     self.tags['studyDate'] = "0008,0020"
@@ -144,6 +145,8 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     parameters = {}
     parameters['PETDICOMPath'] = seriesDirectory
     parameters['RWVDICOMPath'] = seriesDirectory
+    parameters['PETSeriesInstanceUID'] = self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
+    print "python seriesinstanceuid: " + self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
     
