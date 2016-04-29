@@ -225,10 +225,6 @@ int LoadImagesAndComputeSUV( parameters & list )
   inputNames->SetUseSeriesDetails(false); // Series details not necessary to distinguish between different PET scans
   inputNames->SetDirectory(list.PETDICOMPath);
   itk::SerieUIDContainer seriesUIDs = inputNames->GetSeriesUIDs();
-  std::cout << "input names series UIDs: " << std::endl;
-  for (unsigned int i=0; i<seriesUIDs.size(); i++)
-    std::cout << seriesUIDs[i] << std::endl;  
-  std::cout << "end - input names series UIDs" << std::endl;
   std::string selectedSeriesUID = list.PETSeriesInstanceUID.length()>0 ? list.PETSeriesInstanceUID : seriesUIDs[0];
   if (std::find(seriesUIDs.begin(), seriesUIDs.end(), selectedSeriesUID) == seriesUIDs.end())
   {
@@ -836,16 +832,12 @@ bool ExportRWV(parameters & list,
     std::vector<DSRCodedEntryValue> measurementUnitsList,
     std::vector<std::string> measurementsList,
     std::string outputDir){
-  //vtksys::Directory dir;
-  //dir.Load(inputDir.c_str());
-  //unsigned int numFiles = dir.GetNumberOfFiles();
   unsigned int numFiles = list.PETFilenames.size();
   std::cout << numFiles << " files total" << std::endl;
   DcmFileFormat fileFormat;
   DcmDataset* petDataset = NULL;
   std::vector<OFString> instanceUIDs;
   for(unsigned int i=0;i<numFiles;i++){
-    //if(fileFormat.loadFile((inputDir+"/"+dir.GetFile(i)).c_str()).bad()){
     if(fileFormat.loadFile(list.PETFilenames[i].c_str()).bad()){
       continue;
     }
@@ -1000,8 +992,6 @@ int main( int argc, char * argv[] )
   PARSE_ARGS;
   parameters list;
   
-  std::cout <<"pet series UID: " << PETSeriesInstanceUID << std::endl;
-
   // ...
   // ... strings used for parsing out DICOM header info
   // ...

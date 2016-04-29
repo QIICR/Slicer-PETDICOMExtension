@@ -146,7 +146,6 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     parameters['PETDICOMPath'] = seriesDirectory
     parameters['RWVDICOMPath'] = seriesDirectory
     parameters['PETSeriesInstanceUID'] = self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
-    print "python seriesinstanceuid: " + self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
     
