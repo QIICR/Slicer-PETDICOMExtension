@@ -89,11 +89,27 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           loadablesForFiles = self.getLoadablesFromRWVMFile(fileList[0])
           loadables += loadablesForFiles
           self.cacheLoadables(fileList[0],loadablesForFiles)
-
+          
     return loadables
-
     
   def getLoadablesFromRWVMFile(self, file):
+    rwvLoadable = DICOMLib.DICOMLoadable()
+    rwvLoadable.files.append(file)
+    rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
+    rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
+    rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
+    dicomFile = dicom.read_file(file)
+    rwvmSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence[0].RealWorldValueMappingSequence
+    unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
+    rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
+    rwvLoadable.unitName = unitsSeq[0].CodeMeaning
+    rwvLoadable.units = unitsSeq[0].CodeValue          
+    rwvLoadable.tooltip = rwvLoadable.name
+    rwvLoadable.selected = True
+    rwvLoadable.confidence = 0.90
+    return [rwvLoadable]
+    
+  def getLoadablePetSeriesFromRWVMFile(self, file):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
     
     newLoadables = []
@@ -126,6 +142,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.unitName = unitsSeq[0].CodeMeaning
           rwvLoadable.units = unitsSeq[0].CodeValue
           rwvLoadable.confidence = 0.90
+          rwvLoadable.selected = True # added by CB
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
           
@@ -175,6 +192,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       return
   
   def load(self,loadable):
+    loadablePetSeries = self.getLoadablePetSeriesFromRWVMFile( loadable.files[0] )
+    return self.loadPetSeries(loadablePetSeries[0])
+    
+  def loadPetSeries(self, loadable):
     """Use the conversion factor to load the volume into Slicer"""
 
     conversionFactor = loadable.slope
