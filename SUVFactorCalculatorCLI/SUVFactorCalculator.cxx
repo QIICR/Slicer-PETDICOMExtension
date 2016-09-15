@@ -29,6 +29,7 @@
 #include "dcmtk/dcmdata/dcfilefo.h"
 #include "dcmtk/dcmsr/dsriodcc.h"
 #include "dcmtk/dcmsr/dsrdoc.h"
+#include "dcmtk/dcmdata/dcdeftag.h"
 
 // versioning info
 #include "vtkSUVFactorCalculatorVersionConfigure.h"
