@@ -9,6 +9,15 @@ import DICOMLib
 
 import math as math
 
+class CodedValueTuple:
+  def __init__(self, CodeValue=None, CodeMeaning=None, CodingSchemeDesignator=None):
+    self.CodeValue = CodeValue
+    self.CodeMeaning = CodeMeaning
+    self.CodingSchemeDesignator = CodingSchemeDesignator
+
+  def getDictionary(self):
+    return {"CodeValue":self.CodeValue, "CodeMeaning":self.CodeMeaning, "CodingSchemeDesignator":self.CodingSchemeDesignator}
+
 #
 # This is the plugin to handle Real World Value Mapping objects
 # from DICOM files into MRML nodes.  It follows the DICOM module's
@@ -139,8 +148,29 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
           
+          import json
           rwvLoadable.unitName = unitsSeq[0].CodeMeaning
           rwvLoadable.units = unitsSeq[0].CodeValue
+          unitsCode = CodedValueTuple(unitsSeq[0].CodeValue, unitsSeq[0].CodeMeaning, unitsSeq[0].CodingSchemeDesignator)
+          rwvLoadable.unitsCode = json.dumps(unitsCode.getDictionary())
+
+          quantityCode = CodedValueTuple()
+          # Slicer is using an older version of pydicom that does not have this
+          # item in the dictionary, thus need to access by tag, instead of
+          # this:
+          # quantitySeq = rwvmSeq[0].QuantityDefinitionSequence
+          try:
+            quantitySeq = rwvmSeq[0][0x0040,0x9220]
+            if quantitySeq:
+              for qsItem in quantitySeq:
+                if qsItem.ConceptNameCodeSequence[0].CodeMeaning == "Quantity":
+                  concept = qsItem.ConceptCodeSequence[0]
+                  quantityCode = CodedValueTuple(concept.CodeValue, concept.CodeMeaning, concept.CodingSchemeDesignator)
+                  rwvLoadable.quantityCode = json.dumps(quantityCode.getDictionary())
+          except:
+            # it does not matter what goes wrong
+            pass
+
           rwvLoadable.confidence = 0.90
           rwvLoadable.selected = True # added by CB
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
@@ -234,6 +264,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # Set Attributes
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
       imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
+      # These attributes are consistent with those initialized by the PM plugin
+      imageNode.SetAttribute('DICOM.MeasurementUnitsCode', loadable.unitsCode)
+      imageNode.SetAttribute('DICOM.QuantityValueCode', loadable.quantityCode)
+
       # Keep references to the PET instances, as these may be needed to
       # establish correspondence between slice annotations and acutal slices,
       # but also keep the RWVM instance UID ... it's confusing, but not sure
