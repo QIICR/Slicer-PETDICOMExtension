@@ -319,6 +319,9 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # Change name
       name = (loadable.name).replace(' ','_')
       imageNode.SetName(name)
+
+      # lock W/L
+      imageNode.GetDisplayNode().SetWindowLevelLocked(True)
       
       # create Subject Hierarchy nodes for the loaded series
       self.addSeriesInSubjectHierarchy(loadable,imageNode)
