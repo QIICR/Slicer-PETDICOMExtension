@@ -20,7 +20,6 @@ const DcmTagKey dcmHelpersCommon::patientModuleTags[] = {
   DCM_QualityControlSubject,
   DCM_PatientBirthTime,
   DCM_ReferencedPatientSequence,
-  DCM_OtherPatientIDs,
   DCM_OtherPatientIDsSequence,
   DCM_OtherPatientNames,
   DCM_EthnicGroup,
