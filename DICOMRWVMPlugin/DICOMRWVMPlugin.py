@@ -38,11 +38,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['patientSex'] = "0010,0040"
     self.tags['patientHeight'] = "0010,1020"
     self.tags['patientWeight'] = "0010,1030"
-    
+
     self.tags['referencedSeriesSequence'] = "0008,1115"
-    
+
     self.tags['contentTime'] = "0008,0033"
-    self.tags['seriesTime'] = "0008,0031" 
+    self.tags['seriesTime'] = "0008,0031"
     self.tags['triggerTime'] = "0018,1060"
     self.tags['diffusionGradientOrientation'] = "0018,9089"
     self.tags['imageOrientationPatient'] = "0020,0037"
@@ -52,12 +52,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['seriesModality'] = "0008,0060"
     self.tags['seriesInstanceUID'] = "0020,000E"
     self.tags['sopInstanceUID'] = "0008,0018"
-  
+
     self.tags['studyInstanceUID'] = "0020,000D"
     self.tags['studyDate'] = "0008,0020"
     self.tags['studyTime'] = "0008,0030"
     self.tags['studyID'] = "0020,0010"
-    
+
     self.tags['rows'] = "0028,0010"
     self.tags['columns'] = "0028,0011"
     self.tags['spacing'] = "0028,0030"
@@ -68,11 +68,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     self.tags['referencedImageRWVMappingSeq'] = "0040,9094"
 
     self.scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
-  
-  
+
+
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
     f = slicer.dicomDatabase.fileForInstance(sopInstanceUID)
-    return os.path.dirname(f)  
+    return os.path.dirname(f)
 
   def __getSeriesInformation(self,seriesFiles,dicomTag):
     if seriesFiles:
@@ -98,9 +98,9 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           loadablesForFiles = self.getLoadablesFromRWVMFile(fileList[0])
           loadables += loadablesForFiles
           self.cacheLoadables(fileList[0],loadablesForFiles)
-          
+
     return loadables
-    
+
   def getLoadablesFromRWVMFile(self, file):
     rwvLoadable = DICOMLib.DICOMLoadable()
     rwvLoadable.files.append(file)
@@ -112,15 +112,15 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
     rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
     rwvLoadable.unitName = unitsSeq[0].CodeMeaning
-    rwvLoadable.units = unitsSeq[0].CodeValue          
+    rwvLoadable.units = unitsSeq[0].CodeValue
     rwvLoadable.tooltip = rwvLoadable.name
     rwvLoadable.selected = True
     rwvLoadable.confidence = 0.90
     return [rwvLoadable]
-    
+
   def getLoadablePetSeriesFromRWVMFile(self, file):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
-    
+
     newLoadables = []
     dicomFile = dicom.read_file(file)
     if dicomFile.Modality == "RWV":
@@ -143,30 +143,30 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
           rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
           rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
+
           rwvmSeq = item.RealWorldValueMappingSequence
           unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
           rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
-          
-          import json
-          rwvLoadable.unitName = unitsSeq[0].CodeMeaning
-          rwvLoadable.units = unitsSeq[0].CodeValue
-          unitsCode = CodedValueTuple(unitsSeq[0].CodeValue, unitsSeq[0].CodeMeaning, unitsSeq[0].CodingSchemeDesignator)
-          rwvLoadable.unitsCode = json.dumps(unitsCode.getDictionary())
 
-          quantityCode = CodedValueTuple()
+          units = slicer.vtkCodedEntry()
+          units.SetValueSchemeMeaning(unitsSeq[0].CodeValue, unitsSeq[0].CodingSchemeDesignator, unitsSeq[0].CodeMeaning)
+          rwvLoadable.units = units
+
           # Slicer is using an older version of pydicom that does not have this
           # item in the dictionary, thus need to access by tag, instead of
           # this:
           # quantitySeq = rwvmSeq[0].QuantityDefinitionSequence
+          rwvLoadable.quantity = None
           try:
             quantitySeq = rwvmSeq[0][0x0040,0x9220]
             if quantitySeq:
+              quantity = slicer.vtkCodedEntry()
               for qsItem in quantitySeq:
                 if qsItem.ConceptNameCodeSequence[0].CodeMeaning == "Quantity":
                   concept = qsItem.ConceptCodeSequence[0]
-                  quantityCode = CodedValueTuple(concept.CodeValue, concept.CodeMeaning, concept.CodingSchemeDesignator)
-                  rwvLoadable.quantityCode = json.dumps(quantityCode.getDictionary())
+                  quantity.SetValueSchemeMeaning(concept.CodeValue, concept.CodingSchemeDesignator, concept.CodeMeaning)
+                  rwvLoadable.quantity = quantity
           except:
             # it does not matter what goes wrong
             pass
@@ -175,12 +175,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.selected = True # added by CB
           rwvLoadable.slope = rwvmSeq[0].RealWorldValueSlope
           rwvLoadable.referencedSeriesInstanceUID = refSeriesSeq[0].SeriesInstanceUID
-          
+
           # determine modality of referenced series
           refSeriesFiles = slicer.dicomDatabase.filesForSeries(refSeriesSeq[0].SeriesInstanceUID)
           refSeriesFile0 = dicom.read_file(refSeriesFiles[0])
           rwvLoadable.referencedModality = refSeriesFile0.Modality
-          
+
           # add radiopharmaceutical info if PET
           if rwvLoadable.referencedModality == 'PT':
             print('Found Referenced PET series')
@@ -197,20 +197,20 @@ class DICOMRWVMPluginClass(DICOMPlugin):
                 rwvLoadable.RadionuclideCodeValue = rcs[0].CodeValue
             except AttributeError:
               print('WARNING: Cannot find radionuclide info for PET Series.')
-          
+
           self.sortLoadableSeriesFiles(rwvLoadable)
           newLoadables.append(rwvLoadable)
-            
+
     return newLoadables
-  
-  
+
+
   def convertStudyDate(self, studyDate):
     """Return a readable study date string """
     if len(studyDate)==8:
       studyDate = studyDate[:4] + '-' + studyDate[4:6] + '-' + studyDate[6:]
     return studyDate
-    
-    
+
+
   def sortLoadableSeriesFiles(self, loadable):
     scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
     svLoadables = scalarVolumePlugin.examine([loadable.files])
@@ -220,11 +220,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     else:
       loadable.files = svLoadables[0].files
       return
-  
+
   def load(self,loadable):
     loadablePetSeries = self.getLoadablePetSeriesFromRWVMFile( loadable.files[0] )
     return self.loadPetSeries(loadablePetSeries[0])
-    
+
   def loadPetSeries(self, loadable):
     """Use the conversion factor to load the volume into Slicer"""
 
@@ -232,7 +232,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
     # Create volume node
     imageNode = self.scalarVolumePlugin.loadFilesWithArchetype(loadable.files, loadable.name)
-    if imageNode:  
+    if imageNode:
       # apply the conversion factor
       multiplier = vtk.vtkImageMathematics()
       multiplier.SetOperationToMultiplyByK()
@@ -243,7 +243,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         multiplier.SetInput1Data(imageNode.GetImageData())
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
-      
+
       # create list of DICOM instance UIDs corresponding to the loaded files
       instanceUIDs = ""
       for dicomFile in loadable.files:
@@ -252,7 +252,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           uid = "Unknown"
         instanceUIDs += uid + " "
       instanceUIDs = instanceUIDs[:-1]  # strip last space
-      
+
       # get the instance UID for the RWVM object
       derivedItemUID = ""
       try:
@@ -260,13 +260,11 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       except AttributeError:
         # no derived items
         pass
-      
-      # Set Attributes
-      imageNode.SetAttribute('DICOM.MeasurementUnitsCodeMeaning',loadable.unitName)
-      imageNode.SetAttribute('DICOM.MeasurementUnitsCodeValue',loadable.units)
-      # These attributes are consistent with those initialized by the PM plugin
-      imageNode.SetAttribute('DICOM.MeasurementUnitsCode', loadable.unitsCode)
-      imageNode.SetAttribute('DICOM.QuantityValueCode', loadable.quantityCode)
+
+      if loadable.quantity:
+        imageNode.SetVoxelValueQuantity(loadable.quantity)
+      if loadable.units:
+        imageNode.SetVoxelValueUnits(loadable.units)
 
       # Keep references to the PET instances, as these may be needed to
       # establish correspondence between slice annotations and acutal slices,
@@ -274,14 +272,14 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       # if there is a better way in Slicer for now
       imageNode.SetAttribute("DICOM.instanceUIDs", instanceUIDs)
       imageNode.SetAttribute("DICOM.RWV.instanceUID", derivedItemUID)
-    
+
       # automatically select the volume to display
       volumeLogic = slicer.modules.volumes.logic()
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
       selNode.SetReferenceActiveVolumeID(imageNode.GetID())
       appLogic.PropagateVolumeSelection()
-      
+
       # Change display
       displayNode = imageNode.GetVolumeDisplayNode()
       displayNode.SetInterpolate(0)
@@ -312,20 +310,20 @@ class DICOMRWVMPluginClass(DICOMPlugin):
         else: # Default W/L if no info about radiopharmaceutical can be found, often FDG
           displayNode.AutoWindowLevelOff()
           displayNode.SetWindowLevel(6,3)
-          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')     
+          displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
       else:
         displayNode.SetAutoWindowLevel(1)
 
       # Change name
       name = (loadable.name).replace(' ','_')
       imageNode.SetName(name)
-      
+
       # create Subject Hierarchy nodes for the loaded series
       self.addSeriesInSubjectHierarchy(loadable,imageNode)
 
     return imageNode
-          
-  
+
+
 #
 # DICOMRWVMPlugin
 #
@@ -340,7 +338,7 @@ class DICOMRWVMPlugin:
     parent.categories = ["Developer Tools.DICOM Plugins"]
     parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Andrey Fedorov (BWH)"]
     parent.helpText = """
-    Plugin to the DICOM Module to parse and load DICOM series associated with 
+    Plugin to the DICOM Module to parse and load DICOM series associated with
     Real World Value Mapping objects. Provides options for standardized uptake values.
     No module interface here, only in the DICOM module
     """
@@ -379,5 +377,3 @@ class DICOMPETSUVWidget:
 
   def exit(self):
     pass
-
-
