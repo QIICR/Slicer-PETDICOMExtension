@@ -112,7 +112,12 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
     rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
     rwvLoadable.unitName = unitsSeq[0].CodeMeaning
-    rwvLoadable.units = unitsSeq[0].CodeValue
+
+    (quantity,units) = self.getQuantityAndUnitsFromDICOM(dicomFile)
+
+    rwvLoadable.quantity = quantity
+    rwvLoadable.units = units
+
     rwvLoadable.tooltip = rwvLoadable.name
     rwvLoadable.selected = True
     rwvLoadable.confidence = 0.90
@@ -149,27 +154,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
           rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
           rwvLoadable.tooltip = rwvLoadable.name
 
-          units = slicer.vtkCodedEntry()
-          units.SetValueSchemeMeaning(unitsSeq[0].CodeValue, unitsSeq[0].CodingSchemeDesignator, unitsSeq[0].CodeMeaning)
-          rwvLoadable.units = units
+          (quantity,units) = self.getQuantityAndUnitsFromDICOM(dicomFile)
 
-          # Slicer is using an older version of pydicom that does not have this
-          # item in the dictionary, thus need to access by tag, instead of
-          # this:
-          # quantitySeq = rwvmSeq[0].QuantityDefinitionSequence
-          rwvLoadable.quantity = None
-          try:
-            quantitySeq = rwvmSeq[0][0x0040,0x9220]
-            if quantitySeq:
-              quantity = slicer.vtkCodedEntry()
-              for qsItem in quantitySeq:
-                if qsItem.ConceptNameCodeSequence[0].CodeMeaning == "Quantity":
-                  concept = qsItem.ConceptCodeSequence[0]
-                  quantity.SetValueSchemeMeaning(concept.CodeValue, concept.CodingSchemeDesignator, concept.CodeMeaning)
-                  rwvLoadable.quantity = quantity
-          except:
-            # it does not matter what goes wrong
-            pass
+          rwvLoadable.quantity = quantity
+          rwvLoadable.units = units
 
           rwvLoadable.confidence = 0.90
           rwvLoadable.selected = True # added by CB
@@ -203,6 +191,24 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
     return newLoadables
 
+  def getQuantityAndUnitsFromDICOM(self, dicomObject):
+    try:
+      units = slicer.vtkCodedEntry()
+      quantity = slicer.vtkCodedEntry()
+
+      rwvmSeq = dicomObject.ReferencedImageRealWorldValueMappingSequence[0].RealWorldValueMappingSequence
+      unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
+      units.SetValueSchemeMeaning(unitsSeq[0].CodeValue, unitsSeq[0].CodingSchemeDesignator, unitsSeq[0].CodeMeaning)
+      
+      quantitySeq = rwvmSeq[0][0x0040,0x9220]
+      for qsItem in quantitySeq:
+        if qsItem.ConceptNameCodeSequence[0].CodeMeaning == "Quantity":
+          concept = qsItem.ConceptCodeSequence[0]
+          quantity.SetValueSchemeMeaning(concept.CodeValue, concept.CodingSchemeDesignator, concept.CodeMeaning)
+ 
+      return (quantity,units)
+    except:
+      return (None,None)
 
   def convertStudyDate(self, studyDate):
     """Return a readable study date string """
