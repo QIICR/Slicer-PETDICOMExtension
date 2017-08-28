@@ -141,14 +141,27 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     # Call SUV Factor Calculator module
     sopInstanceUID = self.__getSeriesInformation(fileList, self.tags['sopInstanceUID'])
     seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
-    
+   
+    # copy files to a temp location, since otherwise the command line can easily exceed
+    #  the maximum on Windows (~8k characters)
+    import tempfile, shutil
+    cliTempDir = os.path.join(tempfile.mkdtemp())
+    for inputFilePath in fileList:
+      destFile = os.path.join(cliTempDir,os.path.split(inputFilePath)[1])
+      shutil.copyfile(inputFilePath, destFile)
+
     parameters = {}
-    parameters['PETDICOMPath'] = seriesDirectory
+    parameters['PETDICOMPath'] = cliTempDir
     parameters['RWVDICOMPath'] = seriesDirectory
     parameters['PETSeriesInstanceUID'] = self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
     
+    if SUVFactorCalculator.GetStatusString() != 'Completed':
+      raise RuntimeError("SUVFactorCalculator CLI did not complete cleanly")
+
+    shutil.rmtree(cliTempDir)
+
     rwvFile = SUVFactorCalculator.GetParameterDefault(1,18)
 
     return rwvFile
