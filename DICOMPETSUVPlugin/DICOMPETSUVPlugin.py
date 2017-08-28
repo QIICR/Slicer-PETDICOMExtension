@@ -157,10 +157,10 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
     
+    shutil.rmtree(cliTempDir)
+
     if SUVFactorCalculator.GetStatusString() != 'Completed':
       raise RuntimeError("SUVFactorCalculator CLI did not complete cleanly")
-
-    shutil.rmtree(cliTempDir)
 
     rwvFile = SUVFactorCalculator.GetParameterDefault(1,18)
 
