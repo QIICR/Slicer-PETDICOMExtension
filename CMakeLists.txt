@@ -26,6 +26,7 @@ include(${Slicer_USE_FILE})
 add_subdirectory(SUVFactorCalculatorCLI)
 add_subdirectory(DICOMRWVMPlugin)
 add_subdirectory(DICOMPETSUVPlugin)
+add_subdirectory(Testing)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
