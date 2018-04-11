@@ -15,6 +15,19 @@ set(EXTENSION_SCREENSHOTURLS "http://wiki.slicer.org/slicerWiki/images/thumb/2/2
 # Extension dependencies
 find_package(Slicer REQUIRED)
 
+if(CMAKE_CONFIGURATION_TYPES)
+  set(DEPENDENCIES_ADDITIONAL_MODULE_PATHS "")
+  foreach(config ${CMAKE_CONFIGURATION_TYPES})
+    list(APPEND DEPENDENCIES_ADDITIONAL_MODULE_PATHS "${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_LIB_DIR}/${config}")
+    list(APPEND DEPENDENCIES_ADDITIONAL_MODULE_PATHS "${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}/${config}")
+  endforeach()
+else()
+  set(DEPENDENCIES_ADDITIONAL_MODULE_PATHS
+    ${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_LIB_DIR}
+    ${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}
+    )
+endif()
+
 # Additional C/CXX flags - Should be defined before including Slicer_USE_FILE
 set(ADDITIONAL_C_FLAGS "" CACHE STRING "Additional ${EXTENSION_NAME} C Flags")
 set(ADDITIONAL_CXX_FLAGS "" CACHE STRING "Additional ${EXTENSION_NAME} CXX Flags")
