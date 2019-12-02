@@ -1,6 +1,6 @@
 import os
 import sys as SYS
-import dicom
+import pydicom
 from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
@@ -107,7 +107,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
     rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
     rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
-    dicomFile = dicom.read_file(file)
+    dicomFile = pydicom.read_file(file)
     rwvmSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence[0].RealWorldValueMappingSequence
     unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
     rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
@@ -127,7 +127,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
 
     newLoadables = []
-    dicomFile = dicom.read_file(file)
+    dicomFile = pydicom.read_file(file)
     if dicomFile.Modality == "RWV":
       refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
       refSeriesSeq = dicomFile.ReferencedSeriesSequence
@@ -166,7 +166,7 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
           # determine modality of referenced series
           refSeriesFiles = slicer.dicomDatabase.filesForSeries(refSeriesSeq[0].SeriesInstanceUID)
-          refSeriesFile0 = dicom.read_file(refSeriesFiles[0])
+          refSeriesFile0 = pydicom.read_file(refSeriesFiles[0])
           rwvLoadable.referencedModality = refSeriesFile0.Modality
 
           # add radiopharmaceutical info if PET

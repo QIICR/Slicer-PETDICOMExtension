@@ -4,7 +4,7 @@ from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
 
-import dicom
+import pydicom
 
 import DICOMLib
 
@@ -102,7 +102,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
         if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "PT":
           # check if PET series already has Real World Value Mapping
           hasRWVM = False
-          ptFile = dicom.read_file(fileList[0])
+          ptFile = pydicom.read_file(fileList[0])
           studyUID = slicer.dicomDatabase.fileValue(fileList[0],self.tags['studyInstanceUID'])
           for series in slicer.dicomDatabase.seriesForStudy(studyUID):
             if ptFile.SeriesInstanceUID != series:
@@ -169,7 +169,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     
   def getReferencedSeriesInstanceUID(self, rwvmFile):
     """Helper method to read the Referenced Series Instance UID from an RWVM file"""
-    dicomFile = dicom.read_file(rwvmFile)
+    dicomFile = pydicom.read_file(rwvmFile)
     refSeriesSeq = dicomFile.ReferencedSeriesSequence
     return refSeriesSeq[0].SeriesInstanceUID
    

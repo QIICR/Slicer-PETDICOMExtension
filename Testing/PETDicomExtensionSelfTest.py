@@ -1,6 +1,6 @@
 import os
 import unittest
-import dicom
+import pydicom
 import vtk, qt, ctk, slicer, logging
 from DICOMLib import DICOMUtils
 from slicer.ScriptedLoadableModule import *
@@ -130,7 +130,7 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
     print(RWVMFile)
     
     self.delayDisplay('Testing RealWorldValueSlope stored in RWVM file')
-    rwvm=dicom.read_file(RWVMFile)
+    rwvm=pydicom.read_file(RWVMFile)
     self.assertIn('ReferencedImageRealWorldValueMappingSequence',  rwvm)
     rirwvms = rwvm.ReferencedImageRealWorldValueMappingSequence[0]
     self.assertIn('RealWorldValueMappingSequence', rirwvms)
