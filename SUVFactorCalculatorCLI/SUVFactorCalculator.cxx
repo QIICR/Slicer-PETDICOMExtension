@@ -1095,9 +1095,11 @@ int main( int argc, char * argv[] )
 
       writeFile.close();
 
-      std::cout << list.SUVbsaConversionFactor << " " << list.SUVbwConversionFactor << " " <<
-                   list.SUVlbmConversionFactor << " " << list.SUVibwConversionFactor << std::endl;
-
+      std::cout << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
+      std::cout << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
+      std::cout << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
+      std::cout << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
+      
       } else {
         std::cerr << "ERROR: Failed to compute SUV" << std::endl;
         return EXIT_FAILURE;
