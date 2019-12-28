@@ -1,9 +1,13 @@
 import os
 import sys as SYS
-import pydicom
 from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
+
+if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+  import pydicom
+else:
+  import dicom
 
 import DICOMLib
 
@@ -107,7 +111,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     rwvLoadable.patientName = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientName'])
     rwvLoadable.patientID = self.__getSeriesInformation(rwvLoadable.files, self.tags['patientID'])
     rwvLoadable.studyDate = self.__getSeriesInformation(rwvLoadable.files, self.tags['studyDate'])
-    dicomFile = pydicom.read_file(file)
+    if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+      dicomFile = pydicom.dcmread(file)
+    else:
+      dicomFile = dicom.read_file(file)
     rwvmSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence[0].RealWorldValueMappingSequence
     unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
     rwvLoadable.name = rwvLoadable.patientName + ' ' + self.convertStudyDate(rwvLoadable.studyDate) + ' ' + unitsSeq[0].CodeMeaning
@@ -127,7 +134,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     """ Returns DICOMLoadable instances associated with an RWVM object."""
 
     newLoadables = []
-    dicomFile = pydicom.read_file(file)
+    if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+      dicomFile = pydicom.dcmread(file)
+    else:
+      dicomFile = dicom.read_file(file)
     if dicomFile.Modality == "RWV":
       refRWVMSeq = dicomFile.ReferencedImageRealWorldValueMappingSequence
       refSeriesSeq = dicomFile.ReferencedSeriesSequence
@@ -166,7 +176,10 @@ class DICOMRWVMPluginClass(DICOMPlugin):
 
           # determine modality of referenced series
           refSeriesFiles = slicer.dicomDatabase.filesForSeries(refSeriesSeq[0].SeriesInstanceUID)
-          refSeriesFile0 = pydicom.read_file(refSeriesFiles[0])
+          if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+            refSeriesFile0 = pydicom.dcmread(refSeriesFiles[0])
+          else:
+            refSeriesFile0 = dicom.read_file(refSeriesFiles[0])
           rwvLoadable.referencedModality = refSeriesFile0.Modality
 
           # add radiopharmaceutical info if PET

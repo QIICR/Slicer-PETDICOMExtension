@@ -4,7 +4,10 @@ from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
 
-import pydicom
+if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+  import pydicom
+else:
+  import dicom
 
 import DICOMLib
 
@@ -102,7 +105,10 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
         if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "PT":
           # check if PET series already has Real World Value Mapping
           hasRWVM = False
-          ptFile = pydicom.read_file(fileList[0])
+          if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+            ptFile = pydicom.dcmread(fileList[0])
+          else:
+            ptFile = dicom.read_file(fileList[0])
           studyUID = slicer.dicomDatabase.fileValue(fileList[0],self.tags['studyInstanceUID'])
           for series in slicer.dicomDatabase.seriesForStudy(studyUID):
             if ptFile.SeriesInstanceUID != series:
@@ -169,7 +175,10 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     
   def getReferencedSeriesInstanceUID(self, rwvmFile):
     """Helper method to read the Referenced Series Instance UID from an RWVM file"""
-    dicomFile = pydicom.read_file(rwvmFile)
+    if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+      dicomFile = pydicom.dcmread(rwvmFile)
+    else:
+      dicomFile = dicom.read_file(rwvmFile)
     refSeriesSeq = dicomFile.ReferencedSeriesSequence
     return refSeriesSeq[0].SeriesInstanceUID
    
