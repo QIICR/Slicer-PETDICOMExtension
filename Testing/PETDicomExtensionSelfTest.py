@@ -161,7 +161,9 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
   def _downloadTestData(self):
     """ download DICOM PET scan and add to DICOM database
     """ 
-    import urllib
+    from six.moves.urllib.parse import urlparse, urlencode
+    from six.moves.urllib.request import urlopen, urlretrieve
+    from six.moves.urllib.error import HTTPError
     quantity = slicer.vtkCodedEntry()
     quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
     units = slicer.vtkCodedEntry()
@@ -179,7 +181,7 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
       logging.debug('Saving download %s to %s ' % (url, filePath))
       if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
         slicer.util.delayDisplay('Requesting download of %s...\n' % url, 1000)
-        urllib.urlretrieve(url, filePath)
+        urlretrieve(url, filePath)
       if os.path.exists(filePath) and os.path.splitext(filePath)[1]=='.zip':
         success = slicer.app.applicationLogic().Unzip(filePath, destinationDirectory)
         if not success:
@@ -192,8 +194,8 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
   def _loadWithPlugin(self, UID, pluginName):
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
     dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
-    dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.iteritems()}
-    for cb in dicomPluginCheckbox.itervalues():
+    dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.items()}
+    for cb in list(dicomPluginCheckbox.values()):
       cb.checked=False
     dicomPluginCheckbox[pluginName].checked = True
     success=DICOMUtils.loadSeriesByUID([UID])    
