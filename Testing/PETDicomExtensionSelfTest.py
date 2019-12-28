@@ -103,7 +103,10 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
     """ 
     self.delayDisplay('Checking for PET DICOM plugins')
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
-    dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
+    if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+      dicomPluginCheckbox = dicomWidget.browserWidget.pluginSelector.checkBoxByPlugin
+    else:
+      dicomPluginCheckbox = dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
     self.assertIn('DICOMPETSUVPlugin', dicomPluginCheckbox)
     self.assertIn('DICOMRWVMPlugin', dicomPluginCheckbox)    
     
@@ -193,7 +196,10 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
   # ------------------------------------------------------------------------------
   def _loadWithPlugin(self, UID, pluginName):
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
-    dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
+    if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+      dicomPluginCheckbox = dicomWidget.browserWidget.pluginSelector.checkBoxByPlugin
+    else:
+      dicomPluginCheckbox = dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
     dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.items()}
     for cb in list(dicomPluginCheckbox.values()):
       cb.checked=False
