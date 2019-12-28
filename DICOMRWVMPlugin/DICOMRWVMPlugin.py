@@ -212,13 +212,13 @@ class DICOMRWVMPluginClass(DICOMPlugin):
       rwvmSeq = dicomObject.ReferencedImageRealWorldValueMappingSequence[0].RealWorldValueMappingSequence
       unitsSeq = rwvmSeq[0].MeasurementUnitsCodeSequence
       units.SetValueSchemeMeaning(unitsSeq[0].CodeValue, unitsSeq[0].CodingSchemeDesignator, unitsSeq[0].CodeMeaning)
-      
+
       quantitySeq = rwvmSeq[0][0x0040,0x9220]
       for qsItem in quantitySeq:
         if qsItem.ConceptNameCodeSequence[0].CodeMeaning == "Quantity":
           concept = qsItem.ConceptCodeSequence[0]
           quantity.SetValueSchemeMeaning(concept.CodeValue, concept.CodingSchemeDesignator, concept.CodeMeaning)
- 
+
       return (quantity,units)
     except:
       return (None,None)

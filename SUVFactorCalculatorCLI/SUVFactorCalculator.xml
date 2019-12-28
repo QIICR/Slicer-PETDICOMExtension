@@ -97,8 +97,8 @@
   <parameters>
     <label>Output</label>
     <description><![CDATA[output]]></description>
-    
-    
+
+
 
     <string>
       <name>radioactivityUnits</name>
