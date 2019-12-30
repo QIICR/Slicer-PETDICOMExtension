@@ -78,16 +78,16 @@ since the difference between the time of injection and the acquisition time is
 what is important.
 
 In particular, DO NOT REMOVE THE FOLLOWING DICOM TAGS:
-* Radiopharmaceutical Start Time (0018,1072) 
-* Decay Correction (0054,1102) 
-* Decay Factor (0054,1321) 
-* Frame Reference Time (0054,1300) 
-* Radionuclide Half Life (0018,1075) 
-* Series Time (0008,0031) 
+* Radiopharmaceutical Start Time (0018,1072)
+* Decay Correction (0054,1102)
+* Decay Factor (0054,1321)
+* Frame Reference Time (0054,1300)
+* Radionuclide Half Life (0018,1075)
+* Series Time (0008,0031)
 * Patient's Weight (0010,1030)
 
 Note that to calculate other common SUV values like SUVlbm and SUVbsa, you also
-need to retain: 
+need to retain:
 * Patient's Sex (0010,0040)
 * Patient's Size (0010,1020)
 
@@ -143,16 +143,16 @@ struct parameters
     std::string radionuclideHalfLife;
     std::string frameReferenceTime;
     std::string returnParameterFile;
-    
+
     std::string correctedImage;
 
     double SUVbwConversionFactor;
     double SUVlbmConversionFactor;
     double SUVbsaConversionFactor;
     double SUVibwConversionFactor;
-    
+
     std::vector< std::string > PETFilenames;
-    
+
     std::string RWVMFile;
     short maxPixelValue;
     std::string seriesDescription;
@@ -239,7 +239,7 @@ int LoadImagesAndComputeSUV( parameters & list )
   typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
   itk::GDCMImageIO::Pointer dicomIO = itk::GDCMImageIO::New();
   const VolumeReaderType::FileNamesContainer & filenames = inputNames->GetFileNames(selectedSeriesUID);
-  
+
   VolumeReaderType::Pointer volumeReader = VolumeReaderType::New();
   volumeReader->SetImageIO( dicomIO );
   volumeReader->SetFileNames( filenames );
@@ -638,7 +638,7 @@ int LoadImagesAndComputeSUV( parameters & list )
           list.patientWeight = 0.0;
           list.weightUnits = "";
         }
-          
+
       //---
       //--- PatientSize
       if(fileReader.GetElementDS(0x0010,0x1020,1,&list.patientHeight,false) == EXIT_SUCCESS)
@@ -651,7 +651,7 @@ int LoadImagesAndComputeSUV( parameters & list )
           list.patientHeight = 0.0;
           list.heightUnits = "MODULE_INIT_NO_VALUE";
         }
-          
+
       //---
       //--- PatientSex
       if(fileReader.GetElementCS(0x0010,0x0040,tag,false) == EXIT_SUCCESS)
@@ -666,7 +666,7 @@ int LoadImagesAndComputeSUV( parameters & list )
         {
           list.patientSex = "MODULE_INIT_NO_VALUE";
         }
-          
+
       //---
       //--- CorrectedImage
       std::string correctedImage;
@@ -678,7 +678,7 @@ int LoadImagesAndComputeSUV( parameters & list )
         {
           std::cout << "No corrected image detected." << std::endl;
         }
-          
+
       /*//---
       //--- CalibrationFactor
       if(fileReader.GetElementDS(0x7053,0x1009,1,
@@ -724,7 +724,7 @@ int LoadImagesAndComputeSUV( parameters & list )
   if(list.correctedImage.compare("MODULE_INIT_NO_VALUE") != 0)
     {
       std::string correctedImage = list.correctedImage;
-      if(correctedImage.find("ATTN")!=std::string::npos && 
+      if(correctedImage.find("ATTN")!=std::string::npos &&
          (correctedImage.find("DECAY")!=std::string::npos || correctedImage.find("DECY")!=std::string::npos))
         {
           std::cout << "ATTN/DECAY correction detected." << std::endl;
@@ -763,7 +763,7 @@ int LoadImagesAndComputeSUV( parameters & list )
                       double leanBodyMass;    // kg
                       double bodySurfaceArea; // m^2
                       double idealBodyMass;   // kg
-                      
+
                       bodySurfaceArea = (pow(weight,0.425)*pow(height,0.725)*0.007184);
                       list.SUVbsaConversionFactor = bodySurfaceArea / decayedDose;
                       if(list.patientSex=="M")
@@ -771,7 +771,7 @@ int LoadImagesAndComputeSUV( parameters & list )
                           //leanBodyMass = 1.10*weight - 120*(weight/height)*(weight/height);
                           leanBodyMass = 1.10*weight - 128*(weight/height)*(weight/height);  //TODO verify this formula
                           list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
-                          
+
                           idealBodyMass = 48.0 + 1.06*(height - 152);
                           if(idealBodyMass > weight){ idealBodyMass = weight; };
                           list.SUVibwConversionFactor = idealBodyMass / decayedDose;
@@ -780,7 +780,7 @@ int LoadImagesAndComputeSUV( parameters & list )
                         {
                           leanBodyMass = 1.07*weight - 148*(weight/height)*(weight/height);
                           list.SUVlbmConversionFactor = leanBodyMass / decayedDose;
-                          
+
                           idealBodyMass = 45.5 + 0.91*(height - 152);
                           if(idealBodyMass > weight){ idealBodyMass = weight; };
                           list.SUVibwConversionFactor = idealBodyMass / decayedDose;
@@ -809,7 +809,7 @@ int LoadImagesAndComputeSUV( parameters & list )
       std::cout << "No corrected image detected." << std::endl;
       return EXIT_FAILURE;
     }
-  
+
   return EXIT_SUCCESS;
 
 }
@@ -938,22 +938,22 @@ bool ExportRWV(parameters & list,
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("126410","DCM","SUV body weight calculation method"));    
+                         DSRCodedEntryValue("126410","DCM","SUV body weight calculation method"));
     } else if(measurement.getCodeValue() == "{SUVlbm}g/ml"){
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("126411","DCM","SUV lean body mass calculation method"));    
+                         DSRCodedEntryValue("126411","DCM","SUV lean body mass calculation method"));
     } else if(measurement.getCodeValue() == "{SUVbsa}cm2/ml"){
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("126412","DCM","SUV body surface area calculation method"));    
+                         DSRCodedEntryValue("126412","DCM","SUV body surface area calculation method"));
     } else if(measurement.getCodeValue() == "{SUVibw}g/ml"){
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptNameCodeSequence,
                          DSRCodedEntryValue("G-C036","SRT","Measurement Method"));
       InsertCodeSequence(measurementMethodSeqItem, DCM_ConceptCodeSequence,
-                         DSRCodedEntryValue("126413","DCM","SUV ideal body weight calculation method"));    
+                         DSRCodedEntryValue("126413","DCM","SUV ideal body weight calculation method"));
     };
 
     for(unsigned int imageId=0;imageId<instanceUIDs.size();imageId++){
@@ -992,7 +992,7 @@ int main( int argc, char * argv[] )
 {
   PARSE_ARGS;
   parameters list;
-  
+
   // ...
   // ... strings used for parsing out DICOM header info
   // ...
@@ -1041,7 +1041,7 @@ int main( int argc, char * argv[] )
       std::vector<std::string> measurementsList;
 
       std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
-      
+
       if(list.SUVbwConversionFactor!=0.0)
         {
           SUVbwSStream << list.SUVbwConversionFactor;
@@ -1068,10 +1068,10 @@ int main( int argc, char * argv[] )
         }
 
       ExportRWV(list, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
-      
+
       ofstream writeFile;
       writeFile.open( list.returnParameterFile.c_str() );
-     
+
       writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
       writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
       writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
@@ -1099,7 +1099,7 @@ int main( int argc, char * argv[] )
       std::cout << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
       std::cout << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
       std::cout << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
-      
+
       } else {
         std::cerr << "ERROR: Failed to compute SUV" << std::endl;
         return EXIT_FAILURE;

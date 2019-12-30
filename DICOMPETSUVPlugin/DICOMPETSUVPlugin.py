@@ -4,7 +4,10 @@ from __main__ import vtk, qt, ctk, slicer
 from DICOMLib import DICOMPlugin
 from DICOMLib import DICOMLoadable
 
-import pydicom
+if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+  import pydicom
+else:
+  import dicom
 
 import DICOMLib
 
@@ -22,7 +25,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
 
   def __init__(self):
     super(DICOMPETSUVPluginClass,self).__init__()
-    
+
     #print "DICOMPETSUVPlugin __init__()"
     self.loadType = "PET SUV Plugin"
     self.tags['patientID'] = "0010,0020"
@@ -31,16 +34,16 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     self.tags['patientSex'] = "0010,0040"
     self.tags['patientHeight'] = "0010,1020"
     self.tags['patientWeight'] = "0010,1030"
-    
+
     self.tags['relatedSeriesSequence'] = "0008,1250"
-    
+
     self.tags['radioPharmaconStartTime'] = "0018,1072"
     self.tags['decayCorrection'] = "0054,1102"
     self.tags['decayFactor'] = "0054,1321"
     self.tags['frameRefTime'] = "0054,1300"
     self.tags['radionuclideHalfLife'] = "0018,1075"
     self.tags['contentTime'] = "0008,0033"
-    self.tags['seriesTime'] = "0008,0031" 
+    self.tags['seriesTime'] = "0008,0031"
 
 
     self.tags['seriesDescription'] = "0008,103e"
@@ -48,42 +51,42 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     self.tags['seriesInstanceUID'] = "0020,000E"
     self.tags['sopInstanceUID'] = "0008,0018"
     self.tags['seriesInstanceUID'] = "0020,000e"
-  
+
     self.tags['studyInstanceUID'] = "0020,000D"
     self.tags['studyDate'] = "0008,0020"
     self.tags['studyTime'] = "0008,0030"
     self.tags['studyID'] = "0020,0010"
-    
+
     self.tags['rows'] = "0028,0010"
     self.tags['columns'] = "0028,0011"
     self.tags['spacing'] = "0028,0030"
     self.tags['position'] = "0020,0032"
     self.tags['orientation'] = "0020,0037"
     self.tags['pixelData'] = "7fe0,0010"
-    
+
     self.tags['referencedImageRWVMappingSeq'] = "0008,1140"
- 
-    
+
+
     self.fileLists = []
     self.patientName = ""
     self.patientBirthDate = ""
     self.patientSex = ""
-    
+
     self.ctTerm = "CT"
     self.petTerm = "PT"
 
     self.scalarVolumePlugin = slicer.modules.dicomPlugins['DICOMScalarVolumePlugin']()
     self.rwvPlugin = slicer.modules.dicomPlugins['DICOMRWVMPlugin']()
-  
-  
+
+
   def __getDirectoryOfImageSeries(self, sopInstanceUID):
     f = slicer.dicomDatabase.fileForInstance(sopInstanceUID)
-    return os.path.dirname(f)  
-    
+    return os.path.dirname(f)
+
 
   def __getSeriesInformation(self,seriesFiles,dicomTag):
     if seriesFiles:
-      return  slicer.dicomDatabase.fileValue(seriesFiles[0],dicomTag)          
+      return  slicer.dicomDatabase.fileValue(seriesFiles[0],dicomTag)
 
 
   def examine(self,fileLists):
@@ -92,7 +95,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     fileLists parameter.
     """
     loadables = []
-    
+
     # get from cache or create new loadables
     for fileList in fileLists:
       cachedLoadables = self.getCachedLoadables(fileList)
@@ -102,7 +105,10 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
         if slicer.dicomDatabase.fileValue(fileList[0],self.tags['seriesModality']) == "PT":
           # check if PET series already has Real World Value Mapping
           hasRWVM = False
-          ptFile = pydicom.read_file(fileList[0])
+          if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+            ptFile = pydicom.dcmread(fileList[0])
+          else:
+            ptFile = dicom.read_file(fileList[0])
           studyUID = slicer.dicomDatabase.fileValue(fileList[0],self.tags['studyInstanceUID'])
           for series in slicer.dicomDatabase.seriesForStudy(studyUID):
             if ptFile.SeriesInstanceUID != series:
@@ -131,8 +137,8 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
             loadables += loadablesForFiles
 
     return loadables
-    
-  
+
+
   def generateRWVMforFileList(self, fileList):
     """Return a list of loadables after generating Real World Value Mapping
     objects for a PET series
@@ -141,7 +147,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     # Call SUV Factor Calculator module
     sopInstanceUID = self.__getSeriesInformation(fileList, self.tags['sopInstanceUID'])
     seriesDirectory = self.__getDirectoryOfImageSeries(sopInstanceUID)
-   
+
     # copy files to a temp location, since otherwise the command line can easily exceed
     #  the maximum on Windows (~8k characters)
     import tempfile, shutil
@@ -156,7 +162,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     parameters['PETSeriesInstanceUID'] = self.__getSeriesInformation(fileList, self.tags['seriesInstanceUID'])
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
-    
+
     shutil.rmtree(cliTempDir)
 
     if SUVFactorCalculator.GetStatusString() != 'Completed':
@@ -166,17 +172,20 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
 
     return rwvFile
 
-    
+
   def getReferencedSeriesInstanceUID(self, rwvmFile):
     """Helper method to read the Referenced Series Instance UID from an RWVM file"""
-    dicomFile = pydicom.read_file(rwvmFile)
+    if slicer.app.majorVersion >= 5 or (slicer.app.majorVersion == 4 and slicer.app.minorVersion >= 11):
+      dicomFile = pydicom.dcmread(rwvmFile)
+    else:
+      dicomFile = dicom.read_file(rwvmFile)
     refSeriesSeq = dicomFile.ReferencedSeriesSequence
     return refSeriesSeq[0].SeriesInstanceUID
-   
-   
+
+
   def abbreviateLoadableName(self, loadable):
     """Helper method to shorten the name of the SUV conversion """
-    
+
     if "Standardized Uptake Value body weight" in loadable.name:
       loadable.name = (loadable.name).replace('Standardized Uptake Value body weight','(SUVbw)')
       loadable.selected = True
@@ -187,16 +196,16 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     elif "Standardized Uptake Value body surface area" in loadable.name:
       loadable.name = (loadable.name).replace('Standardized Uptake Value body surface area','(SUVbsa)')
     return
-    
+
 
   def load(self,loadable):
     """Load the series into Slicer"""
-    
+
     # Call the DICOMRWVMPlugin to get the image node
     imageNode = self.rwvPlugin.loadPetSeries(loadable)
     return imageNode
 
-  
+
 #
 # DICOMPETSUVPlugin
 #

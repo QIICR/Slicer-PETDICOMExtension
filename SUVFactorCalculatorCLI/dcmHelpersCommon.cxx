@@ -178,7 +178,7 @@ const DcmTagKey dcmHelpersCommon::srDocumentGeneralModuleTags[] = {
 void dcmHelpersCommon::copyElement(const DcmTagKey tag, DcmDataset *src, DcmDataset *dest){
   DcmElement *e;
   OFCondition cond;
-  
+
   cond = src->findAndGetElement(tag, e, OFFalse, OFTrue);
   if(cond.good()){
     cond = dest->insert(e, true);
