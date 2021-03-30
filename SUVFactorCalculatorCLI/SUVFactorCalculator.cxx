@@ -1069,7 +1069,7 @@ int main( int argc, char * argv[] )
 
       ExportRWV(list, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
 
-      ofstream writeFile;
+      std::ofstream writeFile;
       writeFile.open( list.returnParameterFile.c_str() );
 
       writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;

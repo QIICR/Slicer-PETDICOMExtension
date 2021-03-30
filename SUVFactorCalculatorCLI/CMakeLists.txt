@@ -48,10 +48,13 @@ set(MODULE_TARGET_LIBRARIES
   ${ITK_LIBRARIES}
   ${VTK_LIBRARIES}
   ${DCMTK_LIBRARIES}
-  vtkIOCore
   vtkITK
   ITKIODCMTK
   )
+
+if("${Slicer_VTK_VERSION_MAJOR}" MATCHES "8")
+  list(APPEND MODULE_TARGET_LIBRARIES vtkIOCore)
+endif()
 
 #-----------------------------------------------------------------------------
 SEMMacroBuildCLI(
