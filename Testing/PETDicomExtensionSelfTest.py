@@ -171,7 +171,7 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
     quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
     units = slicer.vtkCodedEntry()
     units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
-    url = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
+    url = 'http://github.com/QIICR/PETTumorSegmentation/releases/download/4.10.2/QIN-HEADNECK-01-0139-PET.zip'
     zipFile = 'QIN-HEADNECK-01-0139-PET.zip'
     suvNormalizationFactor = 0.00040166400000000007
     destinationDirectory = self.tempDicomDatabase
