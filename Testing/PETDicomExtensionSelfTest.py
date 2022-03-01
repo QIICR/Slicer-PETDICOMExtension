@@ -94,8 +94,45 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
+    self.test_SUVFactorCalculatorCLI()
     self.test_PETDicomExtensionSelfTest_Main()
     self.tearDown()
+
+  def test_SUVFactorCalculatorCLI(self):
+    """ test PET SUV Factor Calculator CLI
+    """
+    self.delayDisplay('Checking for SUV Factor Calculator CLI')
+    self.assertTrue(hasattr(slicer.modules,"suvfactorcalculator"))
+
+    self.delayDisplay('Adding PET DICOM dataset to DICOM database (including download if necessary)')
+    self._downloadTestData()
+
+    fileList = [os.path.join(self.tempDicomDatabase,f) for f in os.listdir(self.tempDicomDatabase) if (f.endswith('.dcm') and len(f)==10)]
+    import tempfile, shutil
+    cliTempDir = tempfile.mkdtemp()
+    for inputFilePath in fileList:
+      destFile = os.path.join(cliTempDir,os.path.split(inputFilePath)[1])
+      shutil.copyfile(inputFilePath, destFile)
+    cliOutDir = os.path.join(cliTempDir,'out')
+
+    parameters = {}
+    parameters['PETDICOMPath'] = cliTempDir
+    parameters['RWVDICOMPath'] = cliOutDir
+    SUVFactorCalculator = None
+    SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
+    print(SUVFactorCalculator)
+    print(type(SUVFactorCalculator))
+
+    self.assertEqual(SUVFactorCalculator.GetStatusString(), 'Completed')
+
+    # for i in range(SUVFactorCalculator.GetNumberOfParameterGroups()):
+    #   for j in range(SUVFactorCalculator.GetNumberOfParametersInGroup(i)):
+    #     print(f"{i},{j}: {SUVFactorCalculator.GetParameterName(i,j)} = {SUVFactorCalculator.GetParameterValue(i,j)}")
+    SUVbwConversionFactor = SUVFactorCalculator.GetParameterValue(1,14)
+    print(SUVbwConversionFactor)
+    self.assertEqual(SUVbwConversionFactor, '0.000401664')
+
+    self.delayDisplay('Test passed!')
 
   # ------------------------------------------------------------------------------
   def test_PETDicomExtensionSelfTest_Main(self):
