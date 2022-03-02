@@ -104,33 +104,52 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
     self.delayDisplay('Checking for SUV Factor Calculator CLI')
     self.assertTrue(hasattr(slicer.modules,"suvfactorcalculator"))
 
-    self.delayDisplay('Adding PET DICOM dataset to DICOM database (including download if necessary)')
+    self.delayDisplay('Adding PET DICOM dataset (including download if necessary)')
     self._downloadTestData()
 
     fileList = [os.path.join(self.tempDicomDatabase,f) for f in os.listdir(self.tempDicomDatabase) if (f.endswith('.dcm') and len(f)==10)]
     import tempfile, shutil
+    #cliTempDir = os.path.join(self.tempDicomDatabase,"cli"); os.makedirs(cliTempDir,exist_ok=True)
     cliTempDir = tempfile.mkdtemp()
     for inputFilePath in fileList:
       destFile = os.path.join(cliTempDir,os.path.split(inputFilePath)[1])
       shutil.copyfile(inputFilePath, destFile)
     cliOutDir = os.path.join(cliTempDir,'out')
+    os.makedirs(cliOutDir,exist_ok=True)
 
+    self.delayDisplay('Testing generation of RWVM file')
     parameters = {}
     parameters['PETDICOMPath'] = cliTempDir
     parameters['RWVDICOMPath'] = cliOutDir
     SUVFactorCalculator = None
     SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
-    print(SUVFactorCalculator)
-    print(type(SUVFactorCalculator))
 
     self.assertEqual(SUVFactorCalculator.GetStatusString(), 'Completed')
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(1,14), '0.000401664') # SUVbwConversionFactor 
+    self.assertNotEqual(SUVFactorCalculator.GetParameterValue(1,18), '') # RWVMFile 
+    self.assertEqual(os.path.dirname(SUVFactorCalculator.GetParameterValue(1,18)), cliOutDir) # RWVMFile 
+    self.assertTrue(os.path.exists(SUVFactorCalculator.GetParameterValue(1,18))) # RWVMFile 
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(2,0), '') # SUVBWName 
 
-    # for i in range(SUVFactorCalculator.GetNumberOfParameterGroups()):
-    #   for j in range(SUVFactorCalculator.GetNumberOfParametersInGroup(i)):
-    #     print(f"{i},{j}: {SUVFactorCalculator.GetParameterName(i,j)} = {SUVFactorCalculator.GetParameterValue(i,j)}")
-    SUVbwConversionFactor = SUVFactorCalculator.GetParameterValue(1,14)
-    print(SUVbwConversionFactor)
-    self.assertEqual(SUVbwConversionFactor, '0.000401664')
+    self.delayDisplay('Testing generation of SUV normalized volume')
+    SUVBWName = os.path.join(cliOutDir,'SUVbw.nrrd')
+    parameters = {}
+    parameters['PETDICOMPath'] = cliTempDir
+    parameters['SUVBWName'] = SUVBWName
+    SUVFactorCalculator = None
+    SUVFactorCalculator = slicer.cli.run(slicer.modules.suvfactorcalculator, SUVFactorCalculator, parameters, wait_for_completion=True)
+
+    self.assertEqual(SUVFactorCalculator.GetStatusString(), 'Completed')
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(1,14), '0.000401664') # SUVbwConversionFactor 
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(1,18), '') # RWVMFile 
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(2,0), SUVBWName) # SUVBWName 
+
+    self.assertTrue(os.path.exists(SUVBWName)) # SUVBWName
+    import SimpleITK as sitk
+    img = sitk.ReadImage(SUVBWName)
+    f = sitk.MinimumMaximumImageFilter()
+    f.Execute(img)
+    self.assertEqual(round(f.GetMaximum()),90.0)
 
     self.delayDisplay('Test passed!')
 
