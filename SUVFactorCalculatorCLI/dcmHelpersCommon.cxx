@@ -299,10 +299,12 @@ void dcmHelpersCommon::addObserverContext(DSRDocument *doc, const char* deviceOb
 
 void dcmHelpersCommon::addProcedureContext(DSRDocument *doc){
   // TODO
+  (void) doc; // avoid warning: unused parameter 
 }
 
 void dcmHelpersCommon::addSubjectContext(DSRDocument *doc){
   // TODO
+  (void) doc; // avoid warning: unused parameter 
 }
 
 /*
