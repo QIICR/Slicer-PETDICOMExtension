@@ -13,6 +13,8 @@
 #include <itkImageFileWriter.h>
 #include <itkImageRegionConstIterator.h>
 #include <itkImageDuplicator.h>
+#include <itkMinimumMaximumImageCalculator.h>
+#include <itkShiftScaleImageFilter.h>
 #include "itkGDCMImageIO.h"
 #include "itkNumericTraits.h"
 
@@ -121,6 +123,8 @@ itk::ExposeMetaData<double>(*dictionary[i], "7053|1000", suv);
 namespace
 {
 
+using OutputVolumeType = itk::Image<float, 3>;
+
 struct parameters
   {
     std::string PETDICOMPath;
@@ -151,6 +155,9 @@ struct parameters
     double SUVbsaConversionFactor;
     double SUVibwConversionFactor;
 
+    bool outputVolumeRequested;
+    typename OutputVolumeType::Pointer unnormalizedVolume;
+
     std::vector< std::string > PETFilenames;
 
     std::string RWVMFile;
@@ -180,6 +187,31 @@ double DecayCorrection(parameters & list, double injectedDose )
   return decayedDose;
 }
 
+// ...
+// ...............................................................................................
+// ...
+bool WriteNormalizedImage(OutputVolumeType::Pointer image, std::string filename, double normalizationFactor, bool useCompression=false)
+{
+  std::cout << "Writing normalized image " << filename << std::endl;
+  try {
+    using NormalizationFilterType = itk::ShiftScaleImageFilter<OutputVolumeType, OutputVolumeType> ;
+    auto normalize = NormalizationFilterType::New();
+    normalize->SetShift(0.0);
+    normalize->SetScale(normalizationFactor);
+    normalize->SetInput(image);
+  
+    using WriterType = itk::ImageFileWriter<OutputVolumeType>;
+    auto writer = WriterType::New();
+    writer->SetInput( normalize->GetOutput() );
+    writer->SetFileName( filename );
+    writer->SetUseCompression(useCompression);
+    writer->Update();
+  } catch (itk::ExceptionObject &ex) {
+    std::cout << ex << std::endl;
+    return false;
+  }
+  return true;
+}
 
 // ...
 // ...............................................................................................
@@ -252,20 +284,19 @@ int LoadImagesAndComputeSUV( parameters & list )
       return EXIT_FAILURE;
     }
   // Determine largest value
-  typedef itk::ImageRegionConstIterator< VolumeType > VolumeIteratorType;
-  VolumeIteratorType vit(volumeReader->GetOutput(), volumeReader->GetOutput()->GetRequestedRegion());
-  PixelValueType maxValue = itk::NumericTraits<PixelValueType>::min();
-  vit.GoToBegin();
-  while(!vit.IsAtEnd())
-    {
-      PixelValueType value = vit.Value();
-      if(maxValue < value)
-        {
-          maxValue = value;
-        }
-      ++vit;
-    }
-  list.maxPixelValue = maxValue;
+  using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<VolumeType>;
+  auto calc = MinMaxCalculatorType::New();
+  calc->SetImage(volumeReader->GetOutput());
+  calc->Compute();
+  list.maxPixelValue = calc->GetMaximum();
+
+  if (list.outputVolumeRequested){ // read image with precision of output volume
+      auto reader = itk::ImageSeriesReader< OutputVolumeType >::New();
+      reader->SetImageIO( dicomIO );
+      reader->SetFileNames( filenames );
+      reader->Update();
+      list.unnormalizedVolume = reader->GetOutput();
+  }
 
   std::string tag;
   std::string yearstr;
@@ -975,7 +1006,7 @@ bool ExportRWV(parameters & list,
 
   std::string outputFileName = outputDir+"/"+uid+".dcm";
   list.RWVMFile = outputFileName;
-  std::cout << "saving to " << outputFileName << std::endl;
+  std::cout << "saving RWVM to " << outputFileName << std::endl;
   OFCondition cond = rwvmFileFormat.saveFile(outputFileName.c_str(), EXS_LittleEndianExplicit);
   if(cond.bad()){
     std::cout << "Failed to save the result!" << std::endl;
@@ -1022,6 +1053,7 @@ int main( int argc, char * argv[] )
   list.weightUnits = "kg";
   list.correctedImage = "MODULE_INIT_NO_VALUE";
   list.maxPixelValue = itk::NumericTraits< short >::min();
+  list.outputVolumeRequested = (SUVBWName!="" || SUVBSAName!="" || SUVLBMName!="" || SUVIBWName!="");
 
   try
     {
@@ -1037,73 +1069,113 @@ int main( int argc, char * argv[] )
     std::cout << "saving numbers to " << returnParameterFile << std::endl;
     if(LoadImagesAndComputeSUV( list ) != EXIT_FAILURE){
 
-      std::vector<DSRCodedEntryValue> measurementsUnitsList;
-      std::vector<std::string> measurementsList;
+      if (RWVDICOMPath!="")
+      {
+         // produce RWVM file
+        std::vector<DSRCodedEntryValue> measurementsUnitsList;
+        std::vector<std::string> measurementsList;
 
-      std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
+        std::stringstream SUVbwSStream, SUVlbmSStream, SUVbsaSStream, SUVibwSStream;
 
-      if(list.SUVbwConversionFactor!=0.0)
+        if(list.SUVbwConversionFactor!=0.0)
+          {
+            SUVbwSStream << list.SUVbwConversionFactor;
+            measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
+            measurementsList.push_back(SUVbwSStream.str());
+          }
+        if(list.SUVlbmConversionFactor!=0.0)
+          {
+            SUVlbmSStream << list.SUVlbmConversionFactor;
+            measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
+            measurementsList.push_back(SUVlbmSStream.str());
+          }
+        if(list.SUVbsaConversionFactor!=0.0)
+          {
+            SUVbsaSStream << list.SUVbsaConversionFactor;
+            measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
+            measurementsList.push_back(SUVbsaSStream.str());
+          }
+        if(list.SUVibwConversionFactor!=0.0)
+          {
+            SUVibwSStream << list.SUVibwConversionFactor;
+            measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
+            measurementsList.push_back(SUVibwSStream.str());
+          }
+
+        ExportRWV(list, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
+      }
+      
+      if (list.outputVolumeRequested)
+      {
+        // write SUV normalized volume(s)
+        if (SUVBWName!="")
         {
-          SUVbwSStream << list.SUVbwConversionFactor;
-          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
-          measurementsList.push_back(SUVbwSStream.str());
+          if (list.SUVbwConversionFactor==0.0)
+            std::cerr << "WARNING: Can't compute SUV body weight and produce normalized volume." << std::endl;
+          else
+            WriteNormalizedImage(list.unnormalizedVolume, SUVBWName, list.SUVbwConversionFactor);
         }
-      if(list.SUVlbmConversionFactor!=0.0)
+        if (SUVLBMName!="")
         {
-          SUVlbmSStream << list.SUVlbmConversionFactor;
-          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVlbm}g/ml","UCUM","Standardized Uptake Value lean body mass"));
-          measurementsList.push_back(SUVlbmSStream.str());
+          if (list.SUVlbmConversionFactor==0.0)
+            std::cerr << "WARNING: Can't compute SUV lean body mass and produce normalized volume." << std::endl;
+          else
+            WriteNormalizedImage(list.unnormalizedVolume, SUVLBMName, list.SUVlbmConversionFactor);
         }
-      if(list.SUVbsaConversionFactor!=0.0)
+        if (SUVBSAName!="")
         {
-          SUVbsaSStream << list.SUVbsaConversionFactor;
-          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVbsa}cm2/ml","UCUM","Standardized Uptake Value body surface area"));
-          measurementsList.push_back(SUVbsaSStream.str());
+          if (list.SUVbsaConversionFactor==0.0)
+            std::cerr << "WARNING: Can't compute SUV body surface area and produce normalized volume." << std::endl;
+          else
+            WriteNormalizedImage(list.unnormalizedVolume, SUVBSAName, list.SUVbsaConversionFactor);
         }
-      if(list.SUVibwConversionFactor!=0.0)
+        if (SUVIBWName!="")
         {
-          SUVibwSStream << list.SUVibwConversionFactor;
-          measurementsUnitsList.push_back(DSRCodedEntryValue("{SUVibw}g/ml","UCUM","Standardized Uptake Value ideal body weight"));
-          measurementsList.push_back(SUVibwSStream.str());
+          if (list.SUVibwConversionFactor==0.0)
+            std::cerr << "WARNING: Can't compute SUV ideal body weight and produce normalized volume." << std::endl;
+          else
+            WriteNormalizedImage(list.unnormalizedVolume, SUVIBWName, list.SUVibwConversionFactor);
         }
+      }
 
-      ExportRWV(list, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
+      if (list.returnParameterFile!="")
+      {
+        std::ofstream writeFile;
+        writeFile.open( list.returnParameterFile.c_str() );
 
-      std::ofstream writeFile;
-      writeFile.open( list.returnParameterFile.c_str() );
+        writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
+        writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
+        writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
+        writeFile << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
+        writeFile << "injectedDose = " << list.injectedDose << std::endl;
+        //writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
+        writeFile << "patientWeight = " << list.patientWeight << std::endl;
+        writeFile << "patientHeight = " << list.patientHeight << std::endl;
+        writeFile << "patientSex = " << list.patientSex.c_str() << std::endl;
+        writeFile << "seriesReferenceTime = " << list.seriesReferenceTime.c_str() << std::endl;
+        writeFile << "injectionTime = " << list.injectionTime.c_str() << std::endl;
+        writeFile << "decayCorrection = " << list.decayCorrection.c_str() << std::endl;
+        writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
+        writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
+        writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
+        writeFile << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
+        writeFile << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
+        writeFile << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
+        writeFile << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
+        writeFile << "RWVMFile = " << list.RWVMFile << std::endl;
 
-      writeFile << "radioactivityUnits = " << list.radioactivityUnits.c_str() << std::endl;
-      writeFile << "weightUnits = " << list.weightUnits.c_str() << std::endl;
-      writeFile << "heightUnits = " << list.heightUnits.c_str() << std::endl;
-      writeFile << "volumeUnits = " << list.volumeUnits.c_str() << std::endl;
-      writeFile << "injectedDose = " << list.injectedDose << std::endl;
-      //writeFile << "calibrationFactor = " << list.calibrationFactor << std::endl;
-      writeFile << "patientWeight = " << list.patientWeight << std::endl;
-      writeFile << "patientHeight = " << list.patientHeight << std::endl;
-      writeFile << "patientSex = " << list.patientSex.c_str() << std::endl;
-      writeFile << "seriesReferenceTime = " << list.seriesReferenceTime.c_str() << std::endl;
-      writeFile << "injectionTime = " << list.injectionTime.c_str() << std::endl;
-      writeFile << "decayCorrection = " << list.decayCorrection.c_str() << std::endl;
-      writeFile << "decayFactor = " << list.decayFactor.c_str() << std::endl;
-      writeFile << "radionuclideHalfLife = " << list.radionuclideHalfLife.c_str() << std::endl;
-      writeFile << "frameReferenceTime = " << list.frameReferenceTime.c_str() << std::endl;
-      writeFile << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
-      writeFile << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
-      writeFile << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
-      writeFile << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
-      writeFile << "RWVMFile = " << list.RWVMFile << std::endl;
-
-      writeFile.close();
+        writeFile.close();
+      }
 
       std::cout << "SUVbwConversionFactor = " << list.SUVbwConversionFactor << std::endl;
       std::cout << "SUVlbmConversionFactor = " << list.SUVlbmConversionFactor << std::endl;
       std::cout << "SUVbsaConversionFactor = " << list.SUVbsaConversionFactor << std::endl;
       std::cout << "SUVibwConversionFactor = " << list.SUVibwConversionFactor << std::endl;
 
-      } else {
-        std::cerr << "ERROR: Failed to compute SUV" << std::endl;
-        return EXIT_FAILURE;
-      }
+    } else {
+      std::cerr << "ERROR: Failed to compute SUV" << std::endl;
+      return EXIT_FAILURE;
+    }
   }
 
   catch( itk::ExceptionObject & excep )

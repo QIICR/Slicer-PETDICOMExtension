@@ -60,46 +60,10 @@
       <default>"1"</default>
     </string>
   </parameters>
-  <!--
-  <parameters>
-    <label>Output Images</label>
-    <description><![CDATA[Output Images]]></description>
-    <image>
-      <name>SUVBWName</name>
-      <label>SUVbw Output Volume</label>
-      <description>Output volume image (SUV body weight)</description>
-      <channel>output</channel>
-      <longflag>SUVbw</longflag>
-    </image>
-    <image>
-      <name>SUVBSAName</name>
-      <label>SUVbsa Output Volume</label>
-      <description>Output volume image (SUV body surface area)</description>
-      <channel>output</channel>
-      <longflag>SUVbsa</longflag>
-    </image>
-    <image>
-      <name>SUVLBMName</name>
-      <label>SUVlbm Output Volume</label>
-      <description>Output volume image (SUV lean body mass)</description>
-      <channel>output</channel>
-      <longflag>SUVlbm</longflag>
-    </image>
-    <image>
-      <name>SUVIBWName</name>
-      <label>SUVibw Output Volume</label>
-      <description>Output volume image (SUV ideal body weight)</description>
-      <channel>output</channel>
-      <longflag>SUVibw</longflag>
-    </image>
-  </parameters>
-  -->
+
   <parameters>
     <label>Output</label>
     <description><![CDATA[output]]></description>
-
-
-
     <string>
       <name>radioactivityUnits</name>
       <label>Radioactivity Units</label>
@@ -215,4 +179,38 @@
       <description><![CDATA[Real World Value Mapping object file]]></description>
     </string>
   </parameters>
+
+  <parameters>
+    <label>Output Images</label>
+    <description><![CDATA[Output Images]]></description>
+    <string>
+      <name>SUVBWName</name>
+      <label>SUVbw Output Volume</label>
+      <description>Output volume image (SUV body weight)</description>
+      <channel>output</channel>
+      <longflag>SUVbw</longflag>
+    </string>
+    <string>
+      <name>SUVLBMName</name>
+      <label>SUVlbm Output Volume</label>
+      <description>Output volume image (SUV lean body mass)</description>
+      <channel>output</channel>
+      <longflag>SUVlbm</longflag>
+    </string>
+    <string>
+      <name>SUVBSAName</name>
+      <label>SUVbsa Output Volume</label>
+      <description>Output volume image (SUV body surface area)</description>
+      <channel>output</channel>
+      <longflag>SUVbsa</longflag>
+    </string>
+    <string>
+      <name>SUVIBWName</name>
+      <label>SUVibw Output Volume</label>
+      <description>Output volume image (SUV ideal body weight)</description>
+      <channel>output</channel>
+      <longflag>SUVibw</longflag>
+    </string>
+  </parameters>
+
 </executable>
