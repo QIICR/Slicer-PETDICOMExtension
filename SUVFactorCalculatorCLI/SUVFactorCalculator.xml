@@ -10,7 +10,7 @@
   <acknowledgements><![CDATA[This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918. ]]></acknowledgements>
   <parameters>
     <label>Input Image</label>
-    <description><![CDATA[Input parameters]]></description>
+    <description><![CDATA[Input Image Data]]></description>
     <directory>
       <name>PETDICOMPath</name>
       <label>PET DICOM volume path</label>
@@ -27,42 +27,10 @@
       <description><![CDATA[Instance UID of PET series (if multiple series in PET dicom path)]]></description>
       <default></default>
     </string>
-    <directory>
-      <name>RWVDICOMPath</name>
-      <label>RWV mapping object DICOM volume path</label>
-      <channel>input</channel>
-      <flag>-r</flag>
-      <longflag>--rwvmDICOMPath</longflag>
-      <description><![CDATA[Input path to a directory to store the RWV object with the SUV computation result]]></description>
-    </directory>
-    <string>
-      <name>seriesDescription</name>
-      <label>Series description</label>
-      <channel>input</channel>
-      <longflag>--seriesDescription</longflag>
-      <description>Series description</description>
-      <default>PET SUV Factors</default>
-    </string>
-    <string>
-      <name>seriesNumber</name>
-      <label>Series Number</label>
-      <channel>input</channel>
-      <longflag>--seriesNumber</longflag>
-      <description>Series number</description>
-      <default>1000</default>
-    </string>
-    <string>
-      <name>instanceNumber</name>
-      <label>Instance number</label>
-      <channel>input</channel>
-      <longflag>instanceNumber</longflag>
-      <description>Instance number</description>
-      <default>"1"</default>
-    </string>
   </parameters>
 
   <parameters>
-    <label>Output</label>
+    <label>SUV Factor Information</label>
     <description><![CDATA[output]]></description>
     <string>
       <name>radioactivityUnits</name>
@@ -172,45 +140,85 @@
       <channel>output</channel>
       <description><![CDATA[Standardized Uptake Value (ideal body weight) Conversion Factor]]></description>
     </string>
-    <string>
+  </parameters>
+
+  <parameters>
+    <label>Real Worl Value Mapping</label>
+    <description><![CDATA[Real Worl Value Mapping (RVVM) output]]></description>
+    <directory>
+      <name>RWVDICOMPath</name>
+      <label>RWVM DICOM object directory</label>
+      <channel>input</channel>
+      <flag>-r</flag>
+      <longflag>--rwvmDICOMPath</longflag>
+      <description><![CDATA[Input path to a directory to store the RWV object with the SUV computation result. Only used if no file name is provided.]]></description>
+    </directory>
+    <file>
       <name>RWVMFile</name>
-      <label>RWVM File</label>
-      <channel>output</channel>
-      <description><![CDATA[Real World Value Mapping object file]]></description>
+      <label>RWVM DICOM object file</label>
+      <channel>input</channel>
+      <description><![CDATA[File name of the RWV object with the SUV computation result. Not required, default is the the DICOM instance UID.]]></description>
+      <flag>-f</flag>
+      <longflag>--rwvmDICOMFile</longflag>
+      <default></default>
+    </file>
+    <string>
+      <name>seriesDescription</name>
+      <label>Series description</label>
+      <channel>input</channel>
+      <longflag>--seriesDescription</longflag>
+      <description>Series description</description>
+      <default>PET SUV Factors</default>
+    </string>
+    <string>
+      <name>seriesNumber</name>
+      <label>Series Number</label>
+      <channel>input</channel>
+      <longflag>--seriesNumber</longflag>
+      <description>Series number</description>
+      <default>1000</default>
+    </string>
+    <string>
+      <name>instanceNumber</name>
+      <label>Instance number</label>
+      <channel>input</channel>
+      <longflag>instanceNumber</longflag>
+      <description>Instance number</description>
+      <default>"1"</default>
     </string>
   </parameters>
 
   <parameters>
-    <label>Output Images</label>
+    <label>SUV Normalized Images</label>
     <description><![CDATA[Output Images]]></description>
-    <string>
+    <file>
       <name>SUVBWName</name>
-      <label>SUVbw Output Volume</label>
+      <label>SUVbw Volume</label>
       <description>Output volume image (SUV body weight)</description>
-      <channel>output</channel>
+      <channel>input</channel>
       <longflag>SUVbw</longflag>
-    </string>
-    <string>
+    </file>
+    <file>
       <name>SUVLBMName</name>
-      <label>SUVlbm Output Volume</label>
+      <label>SUVlbm Volume</label>
       <description>Output volume image (SUV lean body mass)</description>
-      <channel>output</channel>
+      <channel>input</channel>
       <longflag>SUVlbm</longflag>
-    </string>
-    <string>
+    </file>
+    <file>
       <name>SUVBSAName</name>
-      <label>SUVbsa Output Volume</label>
+      <label>SUVbsa Volume</label>
       <description>Output volume image (SUV body surface area)</description>
-      <channel>output</channel>
+      <channel>input</channel>
       <longflag>SUVbsa</longflag>
-    </string>
-    <string>
+    </file>
+    <file>
       <name>SUVIBWName</name>
-      <label>SUVibw Output Volume</label>
+      <label>SUVibw Volume</label>
       <description>Output volume image (SUV ideal body weight)</description>
-      <channel>output</channel>
+      <channel>input</channel>
       <longflag>SUVibw</longflag>
-    </string>
+    </file>
   </parameters>
 
 </executable>

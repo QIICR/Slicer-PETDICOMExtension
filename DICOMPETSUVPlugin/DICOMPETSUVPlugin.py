@@ -168,7 +168,7 @@ class DICOMPETSUVPluginClass(DICOMPlugin):
     if SUVFactorCalculator.GetStatusString() != 'Completed':
       raise RuntimeError("SUVFactorCalculator CLI did not complete cleanly")
 
-    rwvFile = SUVFactorCalculator.GetParameterDefault(1,18)
+    rwvFile = SUVFactorCalculator.GetParameterDefault(2,1)
 
     return rwvFile
 

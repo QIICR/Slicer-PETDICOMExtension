@@ -863,7 +863,8 @@ void InsertCodeSequence(DcmItem* item, const DcmTag tag, const DSRCodedEntryValu
 bool ExportRWV(parameters & list,
     std::vector<DSRCodedEntryValue> measurementUnitsList,
     std::vector<std::string> measurementsList,
-    std::string outputDir){
+    std::string outputDir,
+    std::string outputFileName = ""){
   unsigned int numFiles = list.PETFilenames.size();
   std::cout << numFiles << " files total" << std::endl;
   DcmFileFormat fileFormat;
@@ -1004,7 +1005,8 @@ bool ExportRWV(parameters & list,
   rwvDataset->putAndInsertString(DCM_SoftwareVersions, SUVFactorCalculator_WC_REVISION);
   //CHECK_COND(rwvDataset->putAndInsertString(DCM_BodyPartExamined, "HEADNECK"));
 
-  std::string outputFileName = outputDir+"/"+uid+".dcm";
+  if (outputFileName.empty())
+    outputFileName = outputDir+"/"+uid+".dcm";
   list.RWVMFile = outputFileName;
   std::cout << "saving RWVM to " << outputFileName << std::endl;
   OFCondition cond = rwvmFileFormat.saveFile(outputFileName.c_str(), EXS_LittleEndianExplicit);
@@ -1066,10 +1068,10 @@ int main( int argc, char * argv[] )
     // GenerateCLP makes a temporary file with the path saved to
     // returnParameterFile, write the output strings in there as key = value pairs
     list.returnParameterFile = returnParameterFile;
-    std::cout << "saving numbers to " << returnParameterFile << std::endl;
+
     if(LoadImagesAndComputeSUV( list ) != EXIT_FAILURE){
 
-      if (RWVDICOMPath!="")
+      if (RWVDICOMPath!="" || RWVMFile!="")
       {
          // produce RWVM file
         std::vector<DSRCodedEntryValue> measurementsUnitsList;
@@ -1102,7 +1104,7 @@ int main( int argc, char * argv[] )
             measurementsList.push_back(SUVibwSStream.str());
           }
 
-        ExportRWV(list, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str());
+        ExportRWV(list, measurementsUnitsList, measurementsList, RWVDICOMPath.c_str(), RWVMFile);
       }
       
       if (list.outputVolumeRequested)
@@ -1140,6 +1142,7 @@ int main( int argc, char * argv[] )
 
       if (list.returnParameterFile!="")
       {
+        std::cout << "saving numbers to " << returnParameterFile << std::endl;
         std::ofstream writeFile;
         writeFile.open( list.returnParameterFile.c_str() );
 

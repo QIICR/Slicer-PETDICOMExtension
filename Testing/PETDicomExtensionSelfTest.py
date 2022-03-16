@@ -126,10 +126,10 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
 
     self.assertEqual(SUVFactorCalculator.GetStatusString(), 'Completed')
     self.assertEqual(SUVFactorCalculator.GetParameterValue(1,14), '0.000401664') # SUVbwConversionFactor 
-    self.assertNotEqual(SUVFactorCalculator.GetParameterValue(1,18), '') # RWVMFile 
-    self.assertEqual(os.path.dirname(SUVFactorCalculator.GetParameterValue(1,18)), cliOutDir) # RWVMFile 
-    self.assertTrue(os.path.exists(SUVFactorCalculator.GetParameterValue(1,18))) # RWVMFile 
-    self.assertEqual(SUVFactorCalculator.GetParameterValue(2,0), '') # SUVBWName 
+    self.assertNotEqual(SUVFactorCalculator.GetParameterValue(2,1), '') # RWVMFile 
+    self.assertEqual(os.path.dirname(SUVFactorCalculator.GetParameterValue(2,1)), cliOutDir) # RWVMFile 
+    self.assertTrue(os.path.exists(SUVFactorCalculator.GetParameterValue(2,1))) # RWVMFile 
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(3,0), '') # SUVBWName 
 
     self.delayDisplay('Testing generation of SUV normalized volume')
     SUVBWName = os.path.join(cliOutDir,'SUVbw.nrrd')
@@ -141,8 +141,8 @@ class PETDicomExtensionSelfTestTest(ScriptedLoadableModuleTest):
 
     self.assertEqual(SUVFactorCalculator.GetStatusString(), 'Completed')
     self.assertEqual(SUVFactorCalculator.GetParameterValue(1,14), '0.000401664') # SUVbwConversionFactor 
-    self.assertEqual(SUVFactorCalculator.GetParameterValue(1,18), '') # RWVMFile 
-    self.assertEqual(SUVFactorCalculator.GetParameterValue(2,0), SUVBWName) # SUVBWName 
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(2,1), '') # RWVMFile 
+    self.assertEqual(SUVFactorCalculator.GetParameterValue(3,0), SUVBWName) # SUVBWName 
 
     self.assertTrue(os.path.exists(SUVBWName)) # SUVBWName
     import SimpleITK as sitk
