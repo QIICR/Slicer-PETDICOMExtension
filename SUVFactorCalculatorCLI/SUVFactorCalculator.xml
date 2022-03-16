@@ -21,7 +21,7 @@
     </directory>
     <string>
       <name>PETSeriesInstanceUID</name>
-      <label>Instance UID of PET series </label>
+      <label>Instance UID of PET series</label>
       <channel>input</channel>
       <longflag>--petSeriesInstanceUID</longflag>
       <description><![CDATA[Instance UID of PET series (if multiple series in PET dicom path)]]></description>
@@ -143,7 +143,7 @@
   </parameters>
 
   <parameters>
-    <label>Real Worl Value Mapping</label>
+    <label>Real World Value Mapping</label>
     <description><![CDATA[Real Worl Value Mapping (RVVM) output]]></description>
     <directory>
       <name>RWVDICOMPath</name>
