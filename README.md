@@ -2,6 +2,8 @@ Slicer PET DICOM Extension
 =====================================
 The PET DICOM Extension provides tools to import PET Standardized Uptake Value (SUV) images from DICOM into 3D Slicer. SUV computation is based on the vendor-neutral "happy path only" calculation described on the Quantitative Imaging Biomarkers Alliance (QIBA) wiki page [Standardized Uptake Value (SUV)][].
 
+Documentation: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/PETDICOM
+
 Acknowledgements
 --------
 
