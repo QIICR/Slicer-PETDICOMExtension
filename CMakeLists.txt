@@ -4,12 +4,12 @@ project(PETDICOMExtension)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "http://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Extensions/PETDICOM")
+set(EXTENSION_HOMEPAGE "https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Extensions/PETDICOM")
 set(EXTENSION_CATEGORY "Converters")
-set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Andrey Fedorov (BWH, SPL)")
+set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Andrey Fedorov (BWH, SPL), Christian Bauer (University of Iowa)")
 set(EXTENSION_DESCRIPTION "The PET DICOM Extension provides tools to import PET Standardized Uptake Value images from DICOM into Slicer.")
 set(EXTENSION_ICONURL "https://raw.githubusercontent.com/QIICR/Slicer-PETDICOMExtension/master/PETDICOMExtension.png")
-set(EXTENSION_SCREENSHOTURLS "http://wiki.slicer.org/slicerWiki/images/thumb/2/2e/SUV_Factor_Calculator_GUI.png/418px-SUV_Factor_Calculator_GUI.png http://wiki.slicer.org/slicerWiki/images/thumb/2/29/DICOM_Browser_RWVM_Plugin.png/800px-DICOM_Browser_RWVM_Plugin.png http://wiki.slicer.org/slicerWiki/images/thumb/4/43/DICOM_Browser_PET_SUV_Plugin.png/800px-DICOM_Browser_PET_SUV_Plugin.png")
+set(EXTENSION_SCREENSHOTURLS "https://wiki.slicer.org/slicerWiki/images/thumb/2/2e/SUV_Factor_Calculator_GUI.png/418px-SUV_Factor_Calculator_GUI.png https://wiki.slicer.org/slicerWiki/images/thumb/2/29/DICOM_Browser_RWVM_Plugin.png/800px-DICOM_Browser_RWVM_Plugin.png https://wiki.slicer.org/slicerWiki/images/thumb/4/43/DICOM_Browser_PET_SUV_Plugin.png/800px-DICOM_Browser_PET_SUV_Plugin.png")
 
 #-----------------------------------------------------------------------------
 # Extension dependencies
