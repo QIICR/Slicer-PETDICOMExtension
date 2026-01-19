@@ -22,7 +22,7 @@ const DcmTagKey dcmHelpersCommon::patientModuleTags[] = {
   DCM_ReferencedPatientSequence,
   DCM_OtherPatientIDsSequence,
   DCM_OtherPatientNames,
-  DCM_EthnicGroup,
+  DCM_EthnicGroups,
   DCM_PatientComments,
   DCM_PatientSpeciesDescription,
   DCM_PatientSpeciesCodeSequence,
