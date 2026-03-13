@@ -253,10 +253,15 @@ class DICOMRWVMPluginClass(DICOMPlugin):
     imageNode = self.scalarVolumePlugin.loadFilesWithArchetype(loadable.files, loadable.name)
     if imageNode:
       # apply the conversion factor
+      # Cast to float first so that fractional SUV values are preserved
+      castFilter = vtk.vtkImageCast()
+      castFilter.SetInputData(imageNode.GetImageData())
+      castFilter.SetOutputScalarTypeToFloat()
+      castFilter.Update()
       multiplier = vtk.vtkImageMathematics()
       multiplier.SetOperationToMultiplyByK()
       multiplier.SetConstantK(float(conversionFactor))
-      multiplier.SetInput1Data(imageNode.GetImageData())
+      multiplier.SetInput1Data(castFilter.GetOutput())
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
 
